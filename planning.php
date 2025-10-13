@@ -94,26 +94,7 @@ foreach ($machines as $machine) {
 </head>
 
 <body>
-    <div class="sidebar">
-        <div class="sidebar-header">MES Backoffice</div>
-        <nav class="nav flex-column">
-            <a class="nav-link" href="/mes/dashboard">Dashboard</a>
-            <a class="nav-link active" href="/mes/planning">Planning</a>
-            <a class="nav-link" href="/mes/production">Production</a>
-            <a class="nav-link" href="/mes/data-analysis">Data Analysis</a>
-            <a class="nav-link" data-bs-toggle="collapse" href="#databaseMenu" role="button" aria-expanded="true"
-                aria-controls="databaseMenu">
-                Database
-            </a>
-            <div class="collapse show" id="databaseMenu">
-                <a class="nav-link" href="/mes/users">Users</a>
-                <a class="nav-link" href="/mes/articles">Articles</a>
-                <a class="nav-link" href="/mes/cycles">Cycles</a>
-                <a class="nav-link" href="/mes/machines">Machines</a>
-            </div>
-            <a class="nav-link" href="/mes/logout">Log Out</a>
-        </nav>
-    </div>
+    <?php include 'includes/Sidebar.php'; ?>
 
     <div class="content">
         <h1>Planning</h1>

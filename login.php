@@ -1,13 +1,11 @@
 <?php
 session_start();
 
-// Redirect if already logged in
 if (isset($_SESSION['user_id'])) {
     header('Location: dashboard.php');
     exit;
 }
 
-// Database connection
 try {
     $pdo = new PDO('mysql:host=localhost;dbname=mes', 'root', '', [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
@@ -16,7 +14,6 @@ try {
     die('Connection failed: ' . $e->getMessage());
 }
 
-// Handle login
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username'] ?? '');
@@ -30,7 +27,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($user && $password === $user['OperatorPassword']) {
-            // Check for admin role
             $roles = explode(';', $user['OperatorRoles']);
             if (in_array('admin', $roles)) {
                 $_SESSION['user_id'] = $user['OperatorID'];

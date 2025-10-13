@@ -1,13 +1,15 @@
 <?php
-class UserManager {
+class UserManager
+{
     private $pdo;
 
-    public function __construct(PDO $pdo) {
+    public function __construct(PDO $pdo)
+    {
         $this->pdo = $pdo;
     }
 
-    // Create a new user
-    public function createUser(string $username, string $password, string $roles = 'operator'): bool {
+    public function createUser(string $username, string $password, string $roles = 'operator'): bool
+    {
         if (empty($username) || empty($password)) {
             return false;
         }
@@ -18,13 +20,12 @@ class UserManager {
             ');
             return $stmt->execute([$username, $password, $roles]);
         } catch (PDOException $e) {
-            // Log error in production; for MVP, return false
             return false;
         }
     }
 
-    // Read a user by ID
-    public function getUserById(int $userId): ?array {
+    public function getUserById(int $userId): ?array
+    {
         try {
             $stmt = $this->pdo->prepare('
                 SELECT OperatorID, OperatorUsername, OperatorRoles, CreatedAt, UpdatedAt
@@ -38,8 +39,8 @@ class UserManager {
         }
     }
 
-    // Read a user by username
-    public function getUserByUsername(string $username): ?array {
+    public function getUserByUsername(string $username): ?array
+    {
         try {
             $stmt = $this->pdo->prepare('
                 SELECT OperatorID, OperatorUsername, OperatorRoles, CreatedAt, UpdatedAt
@@ -53,8 +54,8 @@ class UserManager {
         }
     }
 
-    // Update a user’s details (username and/or roles; password updates optional)
-    public function updateUser(int $userId, ?string $username = null, ?string $password = null, ?string $roles = null): bool {
+    public function updateUser(int $userId, ?string $username = null, ?string $password = null, ?string $roles = null): bool
+    {
         $updates = [];
         $params = [];
         if ($username !== null && $username !== '') {
@@ -85,8 +86,8 @@ class UserManager {
         }
     }
 
-    // Delete a user
-    public function deleteUser(int $userId): bool {
+    public function deleteUser(int $userId): bool
+    {
         try {
             $stmt = $this->pdo->prepare('DELETE FROM Users WHERE OperatorID = ?');
             return $stmt->execute([$userId]);
@@ -95,8 +96,8 @@ class UserManager {
         }
     }
 
-    // List all users
-    public function listUsers(): array {
+    public function listUsers(): array
+    {
         try {
             $stmt = $this->pdo->query('
                 SELECT OperatorID, OperatorUsername, OperatorRoles, CreatedAt, UpdatedAt

@@ -2,6 +2,7 @@
 class MachineManager
 {
     private $pdo;
+    private $tableName = "machine";
 
     public function __construct(PDO $pdo)
     {
@@ -14,10 +15,10 @@ class MachineManager
             return false;
         }
         try {
-            $stmt = $this->pdo->prepare('
-                INSERT INTO machines (Name, Status, Capacity, LastMaintenanceDate, Location, Model)
+            $stmt = $this->pdo->prepare("
+                INSERT INTO $tableName (Name, Status, Capacity, LastMaintenanceDate, Location, Model)
                 VALUES (?, ?, ?, ?, ?, ?)
-            ');
+            ");
             return $stmt->execute([$name, $status, $capacity, $lastMaintenanceDate, $location, $model]);
         } catch (PDOException $e) {
             return false;
@@ -29,7 +30,7 @@ class MachineManager
         try {
             $stmt = $this->pdo->prepare('
                 SELECT MachineID, Name, Status, Capacity, LastMaintenanceDate, Location, Model, CreatedAt, UpdatedAt
-                FROM machines
+                FROM $tableName
                 WHERE MachineID = ?
             ');
             $stmt->execute([$machineId]);
@@ -73,7 +74,7 @@ class MachineManager
         $params[] = $machineId;
         try {
             $stmt = $this->pdo->prepare('
-                UPDATE machines
+                UPDATE $tableName
                 SET ' . implode(', ', $updates) . '
                 WHERE MachineID = ?
             ');
@@ -86,7 +87,7 @@ class MachineManager
     public function deleteMachine(int $machineId): bool
     {
         try {
-            $stmt = $this->pdo->prepare('DELETE FROM machines WHERE MachineID = ?');
+            $stmt = $this->pdo->prepare('DELETE FROM $tableName WHERE MachineID = ?');
             return $stmt->execute([$machineId]);
         } catch (PDOException $e) {
             return false;
@@ -98,7 +99,7 @@ class MachineManager
         try {
             $stmt = $this->pdo->query('
                 SELECT MachineID, Name, Status, Capacity, LastMaintenanceDate, Location, Model, CreatedAt, UpdatedAt
-                FROM machines
+                FROM $tableName
                 ORDER BY Name ASC
             ');
             return $stmt->fetchAll(PDO::FETCH_ASSOC);

@@ -2,6 +2,7 @@
 class UserManager
 {
     private $pdo;
+    private $tableName = "user";
 
     public function __construct(PDO $pdo)
     {
@@ -14,10 +15,10 @@ class UserManager
             return false;
         }
         try {
-            $stmt = $this->pdo->prepare('
-                INSERT INTO Users (OperatorUsername, OperatorPassword, OperatorRoles)
+            $stmt = $this->pdo->prepare("
+                INSERT INTO $tableName (OperatorUsername, OperatorPassword, OperatorRoles)
                 VALUES (?, ?, ?)
-            ');
+            ");
             return $stmt->execute([$username, $password, $roles]);
         } catch (PDOException $e) {
             return false;
@@ -27,11 +28,11 @@ class UserManager
     public function getUserById(int $userId): ?array
     {
         try {
-            $stmt = $this->pdo->prepare('
+            $stmt = $this->pdo->prepare("
                 SELECT OperatorID, OperatorUsername, OperatorRoles, CreatedAt, UpdatedAt
-                FROM Users
+                FROM $tableName
                 WHERE OperatorID = ?
-            ');
+            ");
             $stmt->execute([$userId]);
             return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
         } catch (PDOException $e) {
@@ -42,11 +43,11 @@ class UserManager
     public function getUserByUsername(string $username): ?array
     {
         try {
-            $stmt = $this->pdo->prepare('
+            $stmt = $this->pdo->prepare("
                 SELECT OperatorID, OperatorUsername, OperatorRoles, CreatedAt, UpdatedAt
-                FROM Users
+                FROM $tableName
                 WHERE OperatorUsername = ?
-            ');
+            ");
             $stmt->execute([$username]);
             return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
         } catch (PDOException $e) {
@@ -75,11 +76,11 @@ class UserManager
         }
         $params[] = $userId;
         try {
-            $stmt = $this->pdo->prepare('
-                UPDATE Users
+            $stmt = $this->pdo->prepare("
+                UPDATE $tableName
                 SET ' . implode(', ', $updates) . '
                 WHERE OperatorID = ?
-            ');
+            ");
             return $stmt->execute($params);
         } catch (PDOException $e) {
             return false;
@@ -89,7 +90,7 @@ class UserManager
     public function deleteUser(int $userId): bool
     {
         try {
-            $stmt = $this->pdo->prepare('DELETE FROM Users WHERE OperatorID = ?');
+            $stmt = $this->pdo->prepare("DELETE FROM $tableName WHERE OperatorID = ?");
             return $stmt->execute([$userId]);
         } catch (PDOException $e) {
             return false;
@@ -99,11 +100,11 @@ class UserManager
     public function listUsers(): array
     {
         try {
-            $stmt = $this->pdo->query('
+            $stmt = $this->pdo->query("
                 SELECT OperatorID, OperatorUsername, OperatorRoles, CreatedAt, UpdatedAt
-                FROM Users
+                FROM $tableName
                 ORDER BY OperatorUsername ASC
-            ');
+            ");
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             return [];

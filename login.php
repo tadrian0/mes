@@ -1,4 +1,9 @@
 <?php
+require_once 'includes/Config.php';
+require_once 'includes/Database.php';
+
+$userTableName = "user";
+
 session_start();
 
 if (isset($_SESSION['user_id'])) {
@@ -6,13 +11,6 @@ if (isset($_SESSION['user_id'])) {
     exit;
 }
 
-try {
-    $pdo = new PDO('mysql:host=localhost;dbname=mes', 'root', '', [
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-    ]);
-} catch (PDOException $e) {
-    die('Connection failed: ' . $e->getMessage());
-}
 
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -22,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($username) || empty($password)) {
         $error = 'Please enter both username and password.';
     } else {
-        $stmt = $pdo->prepare('SELECT OperatorID, OperatorUsername, OperatorPassword, OperatorRoles FROM Users WHERE OperatorUsername = ?');
+        $stmt = $pdo->prepare('SELECT OperatorID, OperatorUsername, OperatorPassword, OperatorRoles FROM $userTableName WHERE OperatorUsername = ?');
         $stmt->execute([$username]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 

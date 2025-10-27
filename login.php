@@ -20,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($username) || empty($password)) {
         $error = 'Please enter both username and password.';
     } else {
-        $stmt = $pdo->prepare('SELECT OperatorID, OperatorUsername, OperatorPassword, OperatorRoles FROM $userTableName WHERE OperatorUsername = ?');
+        $stmt = $pdo->prepare("SELECT OperatorID, OperatorUsername, OperatorPassword, OperatorRoles FROM $userTableName WHERE OperatorUsername = ?");
         $stmt->execute([$username]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 

@@ -16,7 +16,7 @@ class MachineManager
         }
         try {
             $stmt = $this->pdo->prepare("
-                INSERT INTO $tableName (Name, Status, Capacity, LastMaintenanceDate, Location, Model)
+                INSERT INTO $this->tableName (Name, Status, Capacity, LastMaintenanceDate, Location, Model)
                 VALUES (?, ?, ?, ?, ?, ?)
             ");
             return $stmt->execute([$name, $status, $capacity, $lastMaintenanceDate, $location, $model]);
@@ -28,11 +28,11 @@ class MachineManager
     public function getMachineById(int $machineId): ?array
     {
         try {
-            $stmt = $this->pdo->prepare('
+            $stmt = $this->pdo->prepare("
                 SELECT MachineID, Name, Status, Capacity, LastMaintenanceDate, Location, Model, CreatedAt, UpdatedAt
-                FROM $tableName
+                FROM $this->tableName
                 WHERE MachineID = ?
-            ');
+            ");
             $stmt->execute([$machineId]);
             return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
         } catch (PDOException $e) {
@@ -73,11 +73,11 @@ class MachineManager
         }
         $params[] = $machineId;
         try {
-            $stmt = $this->pdo->prepare('
-                UPDATE $tableName
+            $stmt = $this->pdo->prepare("
+                UPDATE $this->tableName
                 SET ' . implode(', ', $updates) . '
                 WHERE MachineID = ?
-            ');
+            ");
             return $stmt->execute($params);
         } catch (PDOException $e) {
             return false;
@@ -97,11 +97,11 @@ class MachineManager
     public function listMachines(): array
     {
         try {
-            $stmt = $this->pdo->query('
+            $stmt = $this->pdo->query("
                 SELECT MachineID, Name, Status, Capacity, LastMaintenanceDate, Location, Model, CreatedAt, UpdatedAt
-                FROM $tableName
+                FROM $this->tableName
                 ORDER BY Name ASC
-            ');
+            ");
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             return [];

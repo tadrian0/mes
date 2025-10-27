@@ -16,7 +16,7 @@ class UserManager
         }
         try {
             $stmt = $this->pdo->prepare("
-                INSERT INTO $tableName (OperatorUsername, OperatorPassword, OperatorRoles)
+                INSERT INTO $this->tableName (OperatorUsername, OperatorPassword, OperatorRoles)
                 VALUES (?, ?, ?)
             ");
             return $stmt->execute([$username, $password, $roles]);
@@ -30,7 +30,7 @@ class UserManager
         try {
             $stmt = $this->pdo->prepare("
                 SELECT OperatorID, OperatorUsername, OperatorRoles, CreatedAt, UpdatedAt
-                FROM $tableName
+                FROM $this->tableName
                 WHERE OperatorID = ?
             ");
             $stmt->execute([$userId]);
@@ -45,7 +45,7 @@ class UserManager
         try {
             $stmt = $this->pdo->prepare("
                 SELECT OperatorID, OperatorUsername, OperatorRoles, CreatedAt, UpdatedAt
-                FROM $tableName
+                FROM $this->tableName
                 WHERE OperatorUsername = ?
             ");
             $stmt->execute([$username]);
@@ -77,7 +77,7 @@ class UserManager
         $params[] = $userId;
         try {
             $stmt = $this->pdo->prepare("
-                UPDATE $tableName
+                UPDATE $this->tableName
                 SET ' . implode(', ', $updates) . '
                 WHERE OperatorID = ?
             ");
@@ -90,7 +90,7 @@ class UserManager
     public function deleteUser(int $userId): bool
     {
         try {
-            $stmt = $this->pdo->prepare("DELETE FROM $tableName WHERE OperatorID = ?");
+            $stmt = $this->pdo->prepare("DELETE FROM $this->tableName WHERE OperatorID = ?");
             return $stmt->execute([$userId]);
         } catch (PDOException $e) {
             return false;
@@ -102,7 +102,7 @@ class UserManager
         try {
             $stmt = $this->pdo->query("
                 SELECT OperatorID, OperatorUsername, OperatorRoles, CreatedAt, UpdatedAt
-                FROM $tableName
+                FROM $this->tableName
                 ORDER BY OperatorUsername ASC
             ");
             return $stmt->fetchAll(PDO::FETCH_ASSOC);

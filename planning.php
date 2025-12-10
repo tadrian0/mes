@@ -3,6 +3,7 @@ require_once 'includes/UserManager.php';
 require_once 'includes/Database.php';
 require_once 'includes/IsAdmin.php';
 require_once 'includes/Config.php';
+require_once 'includes/PlanningDefaultManager.php';
 
 $isAdmin = isAdmin();
 $readOnly = !$isAdmin;
@@ -38,6 +39,9 @@ while ($currentDate < $end) {
     $dates[] = $currentDate->format('Y-m-d');
     $currentDate->modify('+1 day');
 }
+
+$defaultMgr = new PlanningDefaultManager($pdo);
+$defaultMgr->ensureDefaults($dates, $machineId);
 
 $machineFilter = $machineId ? "machine_code LIKE :machine_id" : "1=1";
 $stmt = $pdo->prepare("SELECT DISTINCT machine_code, machine_name FROM machine_planning WHERE $machineFilter ORDER BY machine_code");

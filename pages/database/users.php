@@ -1,6 +1,7 @@
 <?php
-require_once '../../includes/Config.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/mes/includes/Config.php';
 require_once '../../includes/IsAdmin.php';
+require_once INCLUDE_PATH . 'Database.php';
 require_once '../../includes/UserManager.php';
 
 $isAdmin = isAdmin();
@@ -9,14 +10,7 @@ if (!$isAdmin) {
     exit;
 }
 
-try {
-    $pdo = new PDO('mysql:host=localhost;dbname=mes', 'root', '', [
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-    ]);
-    $userManager = new UserManager($pdo);
-} catch (PDOException $e) {
-    die('Connection failed: ' . $e->getMessage());
-}
+$userManager = new UserManager($pdo);
 
 $message = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

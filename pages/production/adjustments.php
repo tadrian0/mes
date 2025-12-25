@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php include INCLUDE_PATH . 'Sidebar.php'; ?>
 
     <div class="content">
-        <h1>Articles</h1>
+        <h1>Adjustments</h1>
         <?php if (isset($message)): ?>
             <div class="alert alert-info"><?php echo htmlspecialchars($message); ?></div>
         <?php endif; ?>

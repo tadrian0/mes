@@ -1,7 +1,6 @@
 <?php
 require_once $_SERVER['DOCUMENT_ROOT'] . '/mes/includes/Config.php';
 require_once INCLUDE_PATH . 'ArticleManager.php'; 
-//require_once INCLUDE_PATH . 'ProductionOrderManager.php'; 
 
 class AdjustmentManager
 {
@@ -17,7 +16,6 @@ class AdjustmentManager
 
     public function createAdjustment(int $productionOrderId, int $articleId, int $quantity): bool
     {
-        // TODO: Validate Article, ProductionOrder
         try {
             $stmt = $this->pdo->prepare("
                 INSERT INTO $this->tableName (ProductionOrderId, ArticleId, Quantity)
@@ -33,11 +31,11 @@ class AdjustmentManager
     {
         try {
             $stmt = $this->pdo->prepare("
-                SELECT ProductionOrderId, ArticleId, Quantity
+                SELECT AdjustmentID, ProductionOrderId, ArticleId, Quantity
                 FROM $this->tableName
                 WHERE AdjustmentID = ?
             ");
-            $stmt->execute([$articleId]);
+            $stmt->execute([$adjustmentId]);
             return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
         } catch (PDOException $e) {
             return null;
@@ -48,10 +46,7 @@ class AdjustmentManager
     {
         $updates = [];
         $params = [];
-        if ($adjustmentId !== null) {
-            $updates[] = 'AdjustmentId = ?';
-            $params[] = $adjustmentId;
-        }
+
         if ($productionOrderId !== null) {
             $updates[] = 'ProductionOrderId = ?';
             $params[] = $productionOrderId;
@@ -67,7 +62,9 @@ class AdjustmentManager
         if (empty($updates)) {
             return false;
         }
-        $params[] = $articleId;
+
+        $params[] = $adjustmentId;
+
         try {
             $stmt = $this->pdo->prepare("
                 UPDATE $this->tableName
@@ -84,7 +81,7 @@ class AdjustmentManager
     {
         try {
             $stmt = $this->pdo->prepare("DELETE FROM $this->tableName WHERE AdjustmentID = ?");
-            return $stmt->execute([$articleId]);
+            return $stmt->execute([$adjustmentId]);
         } catch (PDOException $e) {
             return false;
         }

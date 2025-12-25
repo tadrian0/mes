@@ -14,6 +14,11 @@ class MachineManager
         if (empty($name) || empty($location) || empty($model) || $capacity <= 0) {
             return false;
         }
+        
+        if (empty($lastMaintenanceDate)) {
+            $lastMaintenanceDate = null;
+        }
+
         try {
             $stmt = $this->pdo->prepare("
                 INSERT INTO $this->tableName (Name, Status, Capacity, LastMaintenanceDate, Location, Model)
@@ -44,6 +49,7 @@ class MachineManager
     {
         $updates = [];
         $params = [];
+
         if ($name !== null && $name !== '') {
             $updates[] = 'Name = ?';
             $params[] = $name;
@@ -58,7 +64,7 @@ class MachineManager
         }
         if ($lastMaintenanceDate !== null) {
             $updates[] = 'LastMaintenanceDate = ?';
-            $params[] = $lastMaintenanceDate;
+            $params[] = empty($lastMaintenanceDate) ? null : $lastMaintenanceDate;
         }
         if ($location !== null && $location !== '') {
             $updates[] = 'Location = ?';
@@ -68,16 +74,16 @@ class MachineManager
             $updates[] = 'Model = ?';
             $params[] = $model;
         }
+
         if (empty($updates)) {
             return false;
         }
+
         $params[] = $machineId;
+
         try {
-            $stmt = $this->pdo->prepare("
-                UPDATE $this->tableName
-                SET ' . implode(', ', $updates) . '
-                WHERE MachineID = ?
-            ");
+            $sql = "UPDATE $this->tableName SET " . implode(', ', $updates) . " WHERE MachineID = ?";
+            $stmt = $this->pdo->prepare($sql);
             return $stmt->execute($params);
         } catch (PDOException $e) {
             return false;
@@ -87,7 +93,7 @@ class MachineManager
     public function deleteMachine(int $machineId): bool
     {
         try {
-            $stmt = $this->pdo->prepare('DELETE FROM $tableName WHERE MachineID = ?');
+            $stmt = $this->pdo->prepare("DELETE FROM $this->tableName WHERE MachineID = ?");
             return $stmt->execute([$machineId]);
         } catch (PDOException $e) {
             return false;

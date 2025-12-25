@@ -2,7 +2,7 @@
 require_once $_SERVER['DOCUMENT_ROOT'] . '/mes/includes/Config.php';
 require_once INCLUDE_PATH . 'IsAdmin.php';
 require_once INCLUDE_PATH . 'Database.php';
-require_once INCLUDE_PATH . 'ArticleManager.php'; // Assuming a new ArticleManager.php similar to MachineManager.php
+require_once INCLUDE_PATH . 'ArticleManager.php'; 
 
 $isAdmin = isAdmin();
 
@@ -77,11 +77,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     data-bs-target="#editModal<?php echo $article['ArticleID']; ?>">
                                     Edit
                                 </button>
-                                <form method="post" action="" style="display: inline;"
-                                    onsubmit="return confirm('Are you sure you want to delete this article?');">
-                                    <input type="hidden" name="article_id" value="<?php echo $article['ArticleID']; ?>">
-                                    <button type="submit" name="delete" class="btn btn-sm btn-danger">Delete</button>
-                                </form>
                                 <?php include INCLUDE_PATH . 'pages/articles/articles-edit.php'; ?>
                             <?php endif; ?>
                         </td>

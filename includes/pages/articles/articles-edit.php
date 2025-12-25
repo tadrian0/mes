@@ -1,7 +1,5 @@
 <?php
-// This block runs for each article in the loop (inefficient but matches your pattern)
 if ($isAdmin) {
-    // Handle update
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_article'])) {
         $articleId = (int) ($_POST['article_id'] ?? 0);
 
@@ -24,7 +22,6 @@ if ($isAdmin) {
         }
     }
 
-    // Handle delete (mirroring machines-edit.php style)
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_article'])) {
         $articleId = (int) ($_POST['article_id'] ?? 0);
 
@@ -100,7 +97,6 @@ if ($isAdmin) {
     </div>
 </div>
 
-<!-- Delete Form (in table Actions column) -->
 <form method="post" action="" style="display: inline;"
     onsubmit="return confirm('Are you sure you want to delete this article?');">
     <input type="hidden" name="article_id" value="<?php echo $article['ArticleID']; ?>">

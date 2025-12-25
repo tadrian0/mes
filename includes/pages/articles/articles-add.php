@@ -2,7 +2,6 @@
 if (!$isAdmin)
     return;
 
-// Handle the creation of a new article
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_article'])) {
     $name = trim($_POST['name'] ?? '');
     $description = !empty(trim($_POST['description'])) ? trim($_POST['description']) : null;
@@ -17,7 +16,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_article'])) {
         $message = 'Error creating article.';
     }
 
-    // Redirect to avoid form resubmission
     header('Location: ' . $_SERVER['PHP_SELF']);
     exit;
 }

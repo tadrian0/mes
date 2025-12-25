@@ -42,37 +42,88 @@ while ($currentDate < $end) {
 
 $defaultMgr = new PlanningDefaultManager($pdo);
 $defaultMgr->ensureDefaults($dates, $machineId);
+/* -------------------------------------------------------------
+   LOAD MACHINE LIST (from real machine table, not planning table)
+-------------------------------------------------------------- */
+$sql = "SELECT MachineID, Name AS machine_name,
+               CONCAT('M', LPAD(MachineID, 3, '0')) AS machine_code
+        FROM machine";
 
-$machineFilter = $machineId ? "machine_code LIKE :machine_id" : "1=1";
-$stmt = $pdo->prepare("SELECT DISTINCT machine_code, machine_name FROM machine_planning WHERE $machineFilter ORDER BY machine_code");
-if ($machineId)
+if ($machineId !== '') {
+    $sql .= " WHERE CONCAT('M', LPAD(MachineID, 3, '0')) LIKE :machine_id";
+}
+
+$sql .= " ORDER BY machine_code";
+
+$stmt = $pdo->prepare($sql);
+
+if ($machineId !== '') {
     $stmt->bindValue(':machine_id', "%$machineId%");
+}
+
 $stmt->execute();
 $machines = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+
+/* -------------------------------------------------------------
+   FETCH ALL PLANNING ROWS (one query instead of thousands!)
+-------------------------------------------------------------- */
+
+$placeholders = rtrim(str_repeat('?,', count($dates)), ',');
+$sql = "SELECT *
+        FROM machine_planning
+        WHERE plan_date IN ($placeholders)";
+
+$stmt = $pdo->prepare($sql);
+$stmt->execute($dates);
+
+$planningRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+/* Build lookup: $planIndex[machine_code][date] = row */
+$planIndex = [];
+foreach ($planningRows as $r) {
+    $planIndex[$r['machine_code']][$r['plan_date']] = $r;
+}
+
+
+/* -------------------------------------------------------------
+   BUILD FINAL ROW LIST – ALWAYS 1 row per machine per date
+-------------------------------------------------------------- */
+
 $rows = [];
+
 foreach ($machines as $machine) {
-    for ($d = 0; $d < count($dates); $d++) {
-        $date = $dates[$d];
-        $stmt = $pdo->prepare("SELECT * FROM machine_planning WHERE machine_code = :code AND plan_date = :date");
-        $stmt->execute(['code' => $machine['machine_code'], 'date' => $date]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!$row) {
-            $row = [
+    $code = $machine['machine_code'];
+    $name = $machine['machine_name'];
+
+    foreach ($dates as $date) {
+
+        if (isset($planIndex[$code][$date])) {
+            // Row exists
+            $rows[] = $planIndex[$code][$date];
+        } else {
+            // No row → Create default row (same defaults as PlanningDefaultManager)
+            $dow = (int)(new DateTime($date))->format('N');
+            $isWeekday = $dow <= 5;
+
+            $rows[] = [
                 'id' => null,
-                'machine_code' => $machine['machine_code'],
-                'machine_name' => $machine['machine_name'],
+                'machine_code' => $code,
+                'machine_name' => $name,
                 'plan_date' => $date,
-                'shift1_enabled' => 0,
-                'shift1_start' => null,
-                'shift1_break_start' => null,
-                'shift1_break_end' => null,
-                'shift1_end' => null,
-                'shift2_enabled' => 0,
-                'shift2_start' => null,
-                'shift2_break_start' => null,
-                'shift2_break_end' => null,
-                'shift2_end' => null,
+
+                'shift1_enabled' => $isWeekday ? 1 : 0,
+                'shift1_start' => '06:00',
+                'shift1_break_start' => '10:00',
+                'shift1_break_end' => '10:15',
+                'shift1_end' => '14:00',
+
+                'shift2_enabled' => $isWeekday ? 1 : 0,
+                'shift2_start' => '14:00',
+                'shift2_break_start' => '18:00',
+                'shift2_break_end' => '18:15',
+                'shift2_end' => '22:00',
+
                 'shift3_enabled' => 0,
                 'shift3_start' => null,
                 'shift3_break_start' => null,
@@ -80,7 +131,6 @@ foreach ($machines as $machine) {
                 'shift3_end' => null,
             ];
         }
-        $rows[] = $row;
     }
 }
 ?>

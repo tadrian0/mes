@@ -1,0 +1,138 @@
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f2f2f2;
+}
+
+#header {
+    height: 70px;
+    background: #1f2937;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    padding: 0 15px;
+    justify-content: space-between;
+}
+
+#header-left,
+#header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#operators {
+    display: flex;
+    gap: 5px;
+}
+
+.operator-slot {
+    background: #374151;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+#logo img {
+    height: 45px;
+}
+
+button {
+    cursor: pointer;
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    background: #2563eb;
+    color: #fff;
+}
+
+button.secondary {
+    background: #6b7280;
+}
+
+/* ===== MAIN BODY ===== */
+#main {
+    display: flex;
+    height: calc(100vh - 70px - 35%);
+}
+
+#production-area {
+    width: 87.5%;
+    /* 7/8 */
+    padding: 15px;
+    box-sizing: border-box;
+}
+
+#machine-panel {
+    width: 12.5%;
+    /* 1/8 */
+    background: #e5e7eb;
+    padding: 15px;
+    box-sizing: border-box;
+    border-left: 2px solid #d1d5db;
+}
+
+.panel {
+    background: #fff;
+    padding: 12px;
+    margin-bottom: 10px;
+    border-radius: 6px;
+}
+
+.status-working {
+    color: green;
+    font-weight: bold;
+}
+
+.status-stopped {
+    color: red;
+    font-weight: bold;
+}
+
+/* ===== PROGRESS BAR ===== */
+.progress-container {
+    background: #d1d5db;
+    border-radius: 5px;
+    height: 20px;
+    width: 100%;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    width: 0%;
+    background: #16a34a;
+}
+
+/* ===== FOOTER ===== */
+#footer {
+    display: flex;
+    height: 35%;
+    border-top: 2px solid #d1d5db;
+}
+
+.footer-section {
+    padding: 15px;
+    box-sizing: border-box;
+    background: #f9fafb;
+    border-right: 1px solid #d1d5db;
+}
+
+#qc {
+    width: 25%;
+}
+
+/* 2/8 */
+#raw-material {
+    width: 25%;
+}
+
+#labels {
+    width: 50%;
+}
+
+/* 4/8 */
+
+h3 {
+    margin-top: 0;
+}

@@ -42,9 +42,6 @@ while ($currentDate < $end) {
 
 $defaultMgr = new PlanningDefaultManager($pdo);
 $defaultMgr->ensureDefaults($dates, $machineId);
-/* -------------------------------------------------------------
-   LOAD MACHINE LIST (from real machine table, not planning table)
--------------------------------------------------------------- */
 $sql = "SELECT MachineID, Name AS machine_name,
                CONCAT('M', LPAD(MachineID, 3, '0')) AS machine_code
         FROM machine";
@@ -64,11 +61,6 @@ if ($machineId !== '') {
 $stmt->execute();
 $machines = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-
-/* -------------------------------------------------------------
-   FETCH ALL PLANNING ROWS (one query instead of thousands!)
--------------------------------------------------------------- */
-
 $placeholders = rtrim(str_repeat('?,', count($dates)), ',');
 $sql = "SELECT *
         FROM machine_planning
@@ -79,16 +71,10 @@ $stmt->execute($dates);
 
 $planningRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-/* Build lookup: $planIndex[machine_code][date] = row */
 $planIndex = [];
 foreach ($planningRows as $r) {
     $planIndex[$r['machine_code']][$r['plan_date']] = $r;
 }
-
-
-/* -------------------------------------------------------------
-   BUILD FINAL ROW LIST – ALWAYS 1 row per machine per date
--------------------------------------------------------------- */
 
 $rows = [];
 
@@ -99,10 +85,8 @@ foreach ($machines as $machine) {
     foreach ($dates as $date) {
 
         if (isset($planIndex[$code][$date])) {
-            // Row exists
             $rows[] = $planIndex[$code][$date];
         } else {
-            // No row → Create default row (same defaults as PlanningDefaultManager)
             $dow = (int)(new DateTime($date))->format('N');
             $isWeekday = $dow <= 5;
 

@@ -1,6 +1,7 @@
 <?php
 require_once 'includes/Config.php';
 require_once 'includes/Database.php';
+require_once 'includes/ApiKeyManager.php';
 
 $userTableName = "user";
 
@@ -29,8 +30,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['user_id'] = $user['OperatorID'];
                 $_SESSION['username'] = $user['OperatorUsername'];
                 $_SESSION['roles'] = $user['OperatorRoles'];
-                header('Location: dashboard.php');
-                exit;
+
+                try {
+                    $keyMgr = new ApiKeyManager($pdo);
+                    $newKey = $keyMgr->createKey(
+                        $user['OperatorID'], 
+                        "Session Key " . date('Y-m-d H:i'), 
+                        'ALL', 
+                        'ALL'
+                    );
+                    
+                    $_SESSION['fresh_api_key'] = $newKey;
+                    
+                    header('Location: dashboard.php');
+                    exit;
+                } catch (Exception $e) {
+                    $error = 'Login successful, but failed to generate security token.';
+                }
             } else {
                 $error = 'Access denied: Admin role required for backoffice.';
             }
@@ -39,6 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
+?>
 ?>
 
 <!DOCTYPE html>
@@ -50,49 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="<?= $siteBaseUrl ?>styles/backoffice.css" rel="stylesheet" />
-    
-    <style>
-        body {
-            background-color: #f4f6f9; /* Light grey background for contrast */
-            /* Override sidebar flex layout for this specific page since there is no sidebar */
-            display: block; 
-            min-height: 100vh;
-        }
-        .login-container {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .card {
-            border: none;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            border-radius: 8px;
-        }
-        .card-header {
-            background-color: #343a40; /* Matching sidebar color */
-            color: white;
-            text-align: center;
-            padding: 1.5rem 1rem;
-            border-radius: 8px 8px 0 0 !important;
-        }
-        .btn-primary {
-            background-color: #007bff;
-            border-color: #007bff;
-        }
-        .btn-primary:hover {
-            background-color: #0069d9;
-            border-color: #0062cc;
-        }
-        .form-control:focus {
-            border-color: #80bdff;
-            box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
-        }
-        .icon-large {
-            font-size: 3rem;
-            margin-bottom: 10px;
-        }
-    </style>
+    <link rel="stylesheet" href="styles/backoffice_login.css" />
 </head>
 
 <body>

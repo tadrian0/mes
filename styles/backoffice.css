@@ -12,6 +12,11 @@ body {
     top: 0;
     bottom: 0;
     padding-top: 20px;
+    height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 1000;
+    padding-bottom: 50px;
 }
 
 .sidebar a {
@@ -45,4 +50,21 @@ body {
     font-size: 1.5rem;
     padding: 10px 20px;
     color: white;
+}
+
+.sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+    background: #2c3238;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+    background: #6c757d;
+    border-radius: 3px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+    background: #495057;
 }

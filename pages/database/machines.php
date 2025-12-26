@@ -4,7 +4,6 @@ require_once INCLUDE_PATH . 'IsAdmin.php';
 require_once INCLUDE_PATH . 'Database.php';
 require_once INCLUDE_PATH . 'MachineManager.php';
 require_once INCLUDE_PATH . 'CountryManager.php';
-// Plant/Section/City managers loaded for Add/Edit modals, but filters load via AJAX now.
 require_once INCLUDE_PATH . 'PlantManager.php';
 require_once INCLUDE_PATH . 'SectionManager.php';
 require_once INCLUDE_PATH . 'CityManager.php';
@@ -13,10 +12,8 @@ $isAdmin = isAdmin();
 $machineManager = new MachineManager($pdo);
 $countryManager = new CountryManager($pdo);
 
-// We only need Countries initially for the filter; others load via cascading AJAX
 $countries = $countryManager->listAll();
 
-// For Add/Edit Modals (still need full lists or dynamic logic there too, keeping full lists for simplicity in modals)
 $plantManager = new PlantManager($pdo);
 $sectionManager = new SectionManager($pdo);
 $allPlants = $plantManager->listAll();
@@ -25,7 +22,6 @@ $allSections = $sectionManager->listAll();
 $message = '';
 $error = '';
 
-// --- HANDLE POST REQUESTS (Create/Edit/Delete) ---
 if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $redirectUrl = strtok($_SERVER["REQUEST_URI"], '?');
 
@@ -72,7 +68,7 @@ if (isset($_GET['msg'])) {
     <link href="<?= $siteBaseUrl ?>styles/backoffice.css" rel="stylesheet" />
     
     <style>
-        .dataTables_filter { display: none; } /* Hide default DataTables search */
+        .dataTables_filter { display: none; } 
         .table td { vertical-align: middle; }
     </style>
 </head>
@@ -82,6 +78,14 @@ if (isset($_GET['msg'])) {
 
     <div class="content">
         <h1>Machines Registry</h1>
+
+        <div id="apiErrorAlert" class="alert alert-danger d-none align-items-center" role="alert">
+            <i class="fa-solid fa-lock me-2"></i>
+            <div>
+                <strong>Access Denied:</strong> Unable to fetch data. Your API Key may be missing or expired. 
+                <a href="/mes/logout.php" class="alert-link">Please log in again.</a>
+            </div>
+        </div>
         
         <?php if ($message): ?><div class="alert alert-success alert-dismissible fade show" role="alert"><?= htmlspecialchars($message) ?><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div><?php endif; ?>
         <?php if ($error): ?><div class="alert alert-danger alert-dismissible fade show" role="alert"><?= htmlspecialchars($error) ?><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div><?php endif; ?>
@@ -251,7 +255,8 @@ if (isset($_GET['msg'])) {
 
     <script>
         $(document).ready(function() {
-            // 1. Initialize DataTable with API source
+            $.fn.dataTable.ext.errMode = 'none';
+
             var table = $('#machinesTable').DataTable({
                 ajax: '<?= $siteBaseUrl ?>api/machines-fetch.php',
                 columns: [
@@ -301,20 +306,24 @@ if (isset($_GET['msg'])) {
                 language: { search: "_INPUT_", searchPlaceholder: "Search records..." }
             });
 
-            // 2. Global Search
+            $('#machinesTable').on('error.dt', function(e, settings, techNote, message) {
+                console.error('An error has been reported by DataTables: ', message);
+                
+                if (settings.jqXHR && (settings.jqXHR.status === 401 || settings.jqXHR.status === 403)) {
+                    $('#apiErrorAlert').removeClass('d-none'); 
+                    $('.card').addClass('opacity-50'); 
+                } else {
+                    alert('A data error occurred. Check console for details.');
+                }
+            });
+
             $('#globalSearch').on('keyup', function() {
                 table.search(this.value).draw();
             });
 
-            // 3. Cascading Filters Logic
-            
-            // Initial Load of all filters is handled by page load PHP for Countries.
-            // On page load, trigger an update to load Cities/Plants/Sections for "All Countries"
             updateCascadingOptions();
 
-            // Listeners
             $('#filter_country, #filter_city, #filter_plant').on('change', function() {
-                // Determine which filter triggered the change to clear downstream values
                 let id = $(this).attr('id');
                 if (id === 'filter_country') {
                     $('#filter_city').val('');
@@ -327,10 +336,8 @@ if (isset($_GET['msg'])) {
                     $('#filter_section').val('');
                 }
 
-                // Apply DataTables search immediately for the changed column
                 applyTableFilters();
                 
-                // Fetch new options for downstream dropdowns
                 updateCascadingOptions();
             });
 
@@ -357,7 +364,6 @@ if (isset($_GET['msg'])) {
                     data: { country: country, city: city, plant: plant },
                     dataType: 'json',
                     success: function(response) {
-                        // Helper to repopulate select
                         function populate(selector, data, currentValue) {
                             let $el = $(selector);
                             $el.empty();
@@ -368,36 +374,27 @@ if (isset($_GET['msg'])) {
                             });
                         }
 
-                        // Only update downstream dropdowns if they are "All" (empty) or strictly need refresh
-                        // We preserve value if it still exists in the new list, otherwise reset
-                        
-                        // Update City (only if Country changed, really, but safe to refresh)
                         if (!$('#filter_city').val()) {
                             populate('#filter_city', response.cities, '');
                         } else {
-                            // If city is selected, check if it's still valid, if not reset
                             let current = $('#filter_city').val();
                             populate('#filter_city', response.cities, current);
                             if (response.cities.indexOf(current) === -1) $('#filter_city').val(''); 
                         }
 
-                        // Update Plant
                         let currentPlant = $('#filter_plant').val();
                         populate('#filter_plant', response.plants, currentPlant);
                         
-                        // Update Section
                         let currentSection = $('#filter_section').val();
                         populate('#filter_section', response.sections, currentSection);
                     }
                 });
             }
 
-            // 4. Refresh Button
             $('#refreshBtn').on('click', function() {
                 table.ajax.reload(null, false);
             });
 
-            // 5. Edit Modal
             $('#machinesTable').on('click', '.btn-edit', function() {
                 let rowData = JSON.parse(decodeURIComponent($(this).data('row')));
                 $('#edit_machine_id').val(rowData.MachineID);

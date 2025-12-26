@@ -11,30 +11,25 @@ $logsManager = new ProductionLogsManager($pdo);
 $userManager = new UserManager($pdo);
 $machineManager = new MachineManager($pdo);
 
-// 1. Capture Filters
 $filterMachine = isset($_GET['filter_machine']) && $_GET['filter_machine'] !== '' ? (int)$_GET['filter_machine'] : null;
 $filterOperator = isset($_GET['filter_operator']) && $_GET['filter_operator'] !== '' ? (int)$_GET['filter_operator'] : null;
 $filterOrder = isset($_GET['filter_order']) && $_GET['filter_order'] !== '' ? (int)$_GET['filter_order'] : null;
 $filterStartDate = $_GET['filter_start_date'] ?? null;
 $filterEndDate = $_GET['filter_end_date'] ?? null;
 
-// 2. Fetch Data
 $logs = $logsManager->listLogs($filterMachine, $filterOperator, $filterOrder, $filterStartDate, $filterEndDate);
 $users = $userManager->listUsers();
 $machines = $machineManager->listMachines();
 
-// Fetch active orders for dropdown
 $ordersStmt = $pdo->query("SELECT OrderID FROM production_order WHERE Status IN ('Planned','Active') ORDER BY OrderID DESC");
 $orders = $ordersStmt->fetchAll(PDO::FETCH_ASSOC);
 
 $message = '';
 $error = '';
 
-// --- HANDLE POST REQUESTS ---
 if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $redirectUrl = strtok($_SERVER["REQUEST_URI"], '?') . '?' . http_build_query($_GET);
 
-    // START (CREATE)
     if (isset($_POST['start_run'])) {
         $orderId = (int)$_POST['order_id'];
         $machineId = (int)$_POST['machine_id'];
@@ -50,13 +45,10 @@ if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // STOP (CLOSE)
     if (isset($_POST['stop_run'])) {
         $logId = (int)$_POST['log_id'];
         $endOpId = (int)$_POST['end_operator_id'];
         $endTime = $_POST['end_time'];
-        // Simple calculation: if duration > 8h, maybe count as 1 shift? 
-        // For now, allow manual input or default 0.
         $shiftCount = (float)($_POST['shift_count'] ?? 0);
 
         if ($logsManager->stopLog($logId, $endOpId, $endTime, $shiftCount)) {
@@ -67,7 +59,6 @@ if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // DELETE
     if (isset($_POST['delete'])) {
         if ($logsManager->deleteLog((int)$_POST['log_id'])) {
             header("Location: $redirectUrl&msg=deleted");
@@ -76,7 +67,6 @@ if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Messages
 if (isset($_GET['msg'])) {
     if ($_GET['msg'] === 'started') $message = "Production run started.";
     if ($_GET['msg'] === 'stopped') $message = "Production run stopped.";

@@ -11,7 +11,6 @@ $stopManager = new MachineStopManager($pdo);
 $userManager = new UserManager($pdo);
 $machineManager = new MachineManager($pdo);
 
-// 1. Capture Filters
 $filterMachine = isset($_GET['filter_machine']) && $_GET['filter_machine'] !== '' ? (int)$_GET['filter_machine'] : null;
 $filterOperator = isset($_GET['filter_operator']) && $_GET['filter_operator'] !== '' ? (int)$_GET['filter_operator'] : null;
 $filterCategory = isset($_GET['filter_category']) && $_GET['filter_category'] !== '' ? (int)$_GET['filter_category'] : null;
@@ -19,7 +18,6 @@ $filterReason = isset($_GET['filter_reason']) && $_GET['filter_reason'] !== '' ?
 $filterStartDate = $_GET['filter_start_date'] ?? null;
 $filterEndDate = $_GET['filter_end_date'] ?? null;
 
-// 2. Fetch Data
 $stops = $stopManager->listStops($filterMachine, $filterOperator, $filterCategory, $filterReason, $filterStartDate, $filterEndDate);
 $users = $userManager->listUsers();
 $machines = $machineManager->listMachines();
@@ -29,11 +27,9 @@ $reasons = $stopManager->getReasons();
 $message = '';
 $error = '';
 
-// --- HANDLE POST REQUESTS ---
 if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $redirectUrl = strtok($_SERVER["REQUEST_URI"], '?') . '?' . http_build_query($_GET);
 
-    // START (CREATE)
     if (isset($_POST['create'])) {
         if ($stopManager->startStop(
             (int)$_POST['machine_id'],
@@ -49,7 +45,6 @@ if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // CLOSE (END STOP)
     if (isset($_POST['close_stop'])) {
         if ($stopManager->endStop(
             (int)$_POST['stop_id'],
@@ -65,7 +60,6 @@ if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // EDIT
     if (isset($_POST['edit'])) {
         if ($stopManager->updateStop(
             (int)$_POST['stop_id'],
@@ -85,7 +79,6 @@ if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // DELETE
     if (isset($_POST['delete'])) {
         if ($stopManager->deleteStop((int)$_POST['stop_id'])) {
             header("Location: $redirectUrl&msg=deleted");
@@ -94,7 +87,6 @@ if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Display Messages
 if (isset($_GET['msg'])) {
     if ($_GET['msg'] === 'created') $message = "Stop logged successfully.";
     if ($_GET['msg'] === 'closed') $message = "Stop closed and categorized.";

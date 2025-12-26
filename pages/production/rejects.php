@@ -13,7 +13,6 @@ $userManager = new UserManager($pdo);
 $machineManager = new MachineManager($pdo);
 $articleManager = new ArticleManager($pdo);
 
-// 1. Capture Filters
 $filterOrder = isset($_GET['filter_order']) && $_GET['filter_order'] !== '' ? (int)$_GET['filter_order'] : null;
 $filterArticle = isset($_GET['filter_article']) && $_GET['filter_article'] !== '' ? (int)$_GET['filter_article'] : null;
 $filterOperator = isset($_GET['filter_operator']) && $_GET['filter_operator'] !== '' ? (int)$_GET['filter_operator'] : null;
@@ -22,28 +21,23 @@ $filterReason = isset($_GET['filter_reason']) && $_GET['filter_reason'] !== '' ?
 $filterStartDate = $_GET['filter_start_date'] ?? null;
 $filterEndDate = $_GET['filter_end_date'] ?? null;
 
-// 2. Fetch Data
 $rejects = $rejectManager->listRejects($filterOrder, $filterArticle, $filterOperator, $filterCategory, $filterReason, $filterStartDate, $filterEndDate);
 
-// 3. Fetch Dropdown Data
 $users = $userManager->listUsers();
 $machines = $machineManager->listMachines();
 $articles = $articleManager->listArticles();
 $categories = $rejectManager->getCategories();
 $reasons = $rejectManager->getReasons();
 
-// Fetch Order IDs (Limit 100)
 $ordersStmt = $pdo->query("SELECT OrderID FROM production_order ORDER BY OrderID DESC LIMIT 100");
 $orders = $ordersStmt->fetchAll(PDO::FETCH_ASSOC);
 
 $message = '';
 $error = '';
 
-// --- HANDLE POST REQUESTS ---
 if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $redirectUrl = strtok($_SERVER["REQUEST_URI"], '?') . '?' . http_build_query($_GET);
 
-    // CREATE
     if (isset($_POST['create'])) {
         if ($rejectManager->createReject(
             (int)$_POST['order_id'],
@@ -63,7 +57,6 @@ if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // EDIT
     if (isset($_POST['edit'])) {
         if ($rejectManager->updateReject(
             (int)$_POST['reject_id'],
@@ -84,7 +77,6 @@ if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // DELETE
     if (isset($_POST['delete'])) {
         if ($rejectManager->deleteReject((int)$_POST['reject_id'])) {
             header("Location: $redirectUrl&msg=deleted");
@@ -95,7 +87,6 @@ if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Display Messages
 if (isset($_GET['msg'])) {
     if ($_GET['msg'] === 'created') $message = "Reject recorded successfully.";
     if ($_GET['msg'] === 'updated') $message = "Reject updated successfully.";

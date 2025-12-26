@@ -2,26 +2,20 @@
 require_once $_SERVER['DOCUMENT_ROOT'] . '/mes/includes/Config.php';
 require_once INCLUDE_PATH . 'IsAdmin.php';
 require_once INCLUDE_PATH . 'Database.php';
-require_once INCLUDE_PATH . 'RecipeManager.php'; // Assumes RecipeManager and other classes are in this file
+require_once INCLUDE_PATH . 'RecipeManager.php'; 
 
 $isAdmin = isAdmin();
 
 $recipeManager = new RecipeManager($pdo);
 
-// List all main recipe steps
 $recipes = $recipeManager->listRecipes();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Handle the deletion of a recipe step
     if (isset($_POST['delete']) && $isAdmin) {
         $recipeId = (int) $_POST['recipe_id'];
 
-        // Note: The provided RecipeManager->deleteRecipe only deletes the main recipe row.
-        // For full data integrity, it should ideally also delete associated inputs/outputs,
-        // or the DB should use ON DELETE CASCADE.
         if ($recipeManager->deleteRecipe($recipeId)) {
             $message = "Recipe step deleted successfully.";
-            // Refresh the list after deletion
             $recipes = $recipeManager->listRecipes();
         } else {
             $message = "Failed to delete recipe step. It might be in use or a database error occurred.";

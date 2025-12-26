@@ -9,11 +9,9 @@ $isAdmin = isAdmin();
 $sectionManager = new SectionManager($pdo);
 $plantManager = new PlantManager($pdo);
 
-// Filters
 $filterPlant = isset($_GET['filter_plant']) && $_GET['filter_plant'] !== '' ? (int)$_GET['filter_plant'] : null;
 $search = isset($_GET['search']) ? trim($_GET['search']) : null;
 
-// Fetch Data
 $sections = $sectionManager->listAll($filterPlant, $search);
 $plants = $plantManager->listAll();
 
@@ -42,7 +40,6 @@ if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Messages
 if (isset($_GET['msg'])) {
     if ($_GET['msg'] === 'created') $message = "Section added successfully.";
     if ($_GET['msg'] === 'updated') $message = "Section updated successfully.";

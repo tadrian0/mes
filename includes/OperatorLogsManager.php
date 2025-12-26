@@ -14,7 +14,6 @@ class OperatorLogsManager
         try {
             $this->pdo->beginTransaction();
 
-            // 1. Close existing session (Use OperatorID)
             $closeStmt = $this->pdo->prepare("
                 UPDATE $this->tableName 
                 SET LogoutTime = NOW() 
@@ -22,7 +21,6 @@ class OperatorLogsManager
             ");
             $closeStmt->execute([$operatorId]);
 
-            // 2. Create new session (Use OperatorID)
             $stmt = $this->pdo->prepare("
                 INSERT INTO $this->tableName (OperatorID, MachineID, LoginTime)
                 VALUES (?, ?, NOW())
@@ -97,7 +95,6 @@ class OperatorLogsManager
 
             $params = [];
 
-            // Apply Filters
             if (!empty($filterMachine)) {
                 $sql .= " AND l.MachineID = ?";
                 $params[] = $filterMachine;

@@ -114,7 +114,6 @@ class MachineStopManager
         }
     }
 
-    // --- Helpers ---
     public function getCategories(): array {
         return $this->pdo->query("SELECT * FROM machine_stop_category ORDER BY CategoryName")->fetchAll(PDO::FETCH_ASSOC);
     }

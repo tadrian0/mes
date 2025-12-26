@@ -9,11 +9,9 @@ $isAdmin = isAdmin();
 $plantManager = new PlantManager($pdo);
 $cityManager = new CityManager($pdo);
 
-// Filters
 $filterCity = isset($_GET['filter_city']) && $_GET['filter_city'] !== '' ? (int)$_GET['filter_city'] : null;
 $search = isset($_GET['search']) ? trim($_GET['search']) : null;
 
-// Fetch Data
 $plants = $plantManager->listAll($filterCity, $search);
 $cities = $cityManager->listAll();
 
@@ -42,7 +40,6 @@ if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Messages
 if (isset($_GET['msg'])) {
     if ($_GET['msg'] === 'created') $message = "Plant added successfully.";
     if ($_GET['msg'] === 'updated') $message = "Plant updated successfully.";

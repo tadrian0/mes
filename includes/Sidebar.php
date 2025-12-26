@@ -3,9 +3,11 @@ $currentPage = basename($_SERVER['SCRIPT_NAME'], '.php');
 
 $productionPages = ['operator-logs', 'production-logs', 'machine-stops', 'raw-materials', 'rejects', 'batches', 'adjustments'];
 $databasePages   = ['users', 'articles', 'cycles', 'machines', 'countries', 'cities', 'plants', 'sections'];
+$securityPages = ['api-management', "audit-logs"];
 
 $isProductionOpen = in_array($currentPage, $productionPages);
 $isDatabaseOpen   = in_array($currentPage, $databasePages);
+$isSecurityOpen   = in_array($currentPage, $securityPages);
 
 function sidebarLink($href, $text, $currentPage, $iconClass = 'fa-circle-dot')
 {
@@ -81,8 +83,59 @@ function sidebarLink($href, $text, $currentPage, $iconClass = 'fa-circle-dot')
             </div>
         </div>
 
+        <a class="nav-link <?php echo $isSecurityOpen ? '' : 'collapsed'; ?>" 
+           data-bs-toggle="collapse" 
+           href="#securityMenu" 
+           role="button" 
+           aria-expanded="<?php echo $isSecurityOpen ? 'true' : 'false'; ?>"
+           aria-controls="securityMenu">
+            <i class="fa-solid fa-lock me-2" style="width: 20px; text-align: center;"></i> 
+            Security
+            <i class="fa-solid fa-chevron-down float-end mt-1" style="font-size: 0.8rem;"></i>
+        </a>
+
+        <div class="collapse <?php echo $isSecurityOpen ? 'show' : ''; ?>" id="securityMenu">
+            <div class="ms-3 border-start ps-2">
+                <?php echo sidebarLink('pages/security/api-management.php', 'Manage API keys', $currentPage, 'fa-key'); ?>
+                <?php echo sidebarLink('pages/security/api-usage-audits.php', 'API usage audits', $currentPage, 'fa-magnifying-glass'); ?>
+            </div>
+        </div>
+
         <hr class="text-light">
 
         <?php echo sidebarLink('logout', 'Log Out', $currentPage, 'fa-right-from-bracket'); ?>
     </nav>
 </div>
+<script>
+    <?php if (isset($_SESSION['fresh_api_key'])): ?>
+        const sessionKey = "<?= $_SESSION['fresh_api_key'] ?>";
+        if (!localStorage.getItem('mes_api_key')) {
+            console.log("Setting new API Key from session");
+            localStorage.setItem('mes_api_key', sessionKey);
+        } else {
+            // TODO log usage event, validate
+        }
+        <?php unset($_SESSION['fresh_api_key']); ?>
+    <?php endif; ?>
+
+    if (typeof $ !== 'undefined') {
+        $.ajaxSetup({
+            beforeSend: function(xhr) {
+                const key = localStorage.getItem('mes_api_key');
+                if (key) {
+                    xhr.setRequestHeader('X-API-KEY', key);
+                }
+            }
+        });
+    }
+
+    const originalFetch = window.fetch;
+    window.fetch = function(url, config = {}) {
+        const key = localStorage.getItem('mes_api_key');
+        if (key) {
+            config.headers = config.headers || {};
+            config.headers['X-API-KEY'] = key;
+        }
+        return originalFetch(url, config);
+    };
+</script>

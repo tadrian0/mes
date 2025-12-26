@@ -2,7 +2,6 @@
 if (!$isAdmin)
     return;
 
-// Handle the creation of a new recipe step
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_recipe'])) {
     $sequence = (int) ($_POST['sequence'] ?? 0);
     $operationDescription = !empty(trim($_POST['operation_description'])) ? trim($_POST['operation_description']) : null;
@@ -15,7 +14,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_recipe'])) {
         $message = 'Error creating recipe step.';
     }
 
-    // Redirect to the same page to avoid form resubmission
     header('Location: ' . $_SERVER['PHP_SELF']);
     exit;
 }

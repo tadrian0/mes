@@ -13,14 +13,12 @@ $userManager = new UserManager($pdo);
 $machineManager = new MachineManager($pdo);
 $articleManager = new ArticleManager($pdo);
 
-// 1. Capture Filters
 $filterMachine = isset($_GET['filter_machine']) && $_GET['filter_machine'] !== '' ? (int)$_GET['filter_machine'] : null;
 $filterOperator = isset($_GET['filter_operator']) && $_GET['filter_operator'] !== '' ? (int)$_GET['filter_operator'] : null;
 $filterStartDate = $_GET['filter_start_date'] ?? null;
 $filterEndDate = $_GET['filter_end_date'] ?? null;
 $searchBatch = isset($_GET['search_batch']) ? trim($_GET['search_batch']) : null;
 
-// 2. Fetch Data
 $batches = $batchManager->listBatches($filterMachine, $filterOperator, $filterStartDate, $filterEndDate, $searchBatch);
 $users = $userManager->listUsers();
 $machines = $machineManager->listMachines();
@@ -32,13 +30,9 @@ $orders = $ordersStmt->fetchAll(PDO::FETCH_ASSOC);
 $message = '';
 $error = '';
 
-// --- HANDLE POST REQUESTS ---
 if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    
-    // Helper to build redirect URL keeping filters
     $queryParams = $_GET;
     
-    // CREATE
     if (isset($_POST['create'])) {
         $batchCode = trim($_POST['batch_code']);
         $batchType = $_POST['batch_type'];
@@ -59,7 +53,6 @@ if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // EDIT
     if (isset($_POST['edit'])) {
         $batchId = (int)$_POST['batch_id'];
         $batchCode = trim($_POST['edit_batch_code']);
@@ -81,7 +74,6 @@ if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // DELETE
     if (isset($_POST['delete'])) {
         $batchId = (int)$_POST['batch_id'];
         if ($batchManager->deleteBatch($batchId)) {
@@ -94,7 +86,6 @@ if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Display Messages
 if (isset($_GET['msg'])) {
     if ($_GET['msg'] === 'created') $message = "Batch created successfully.";
     if ($_GET['msg'] === 'updated') $message = "Batch updated successfully.";

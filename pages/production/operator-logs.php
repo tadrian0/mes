@@ -11,13 +11,11 @@ $logsManager = new OperatorLogsManager($pdo);
 $userManager = new UserManager($pdo);
 $machineManager = new MachineManager($pdo);
 
-// 1. Capture Filter Inputs
 $filterMachine = isset($_GET['filter_machine']) && $_GET['filter_machine'] !== '' ? (int)$_GET['filter_machine'] : null;
 $filterOperator = isset($_GET['filter_operator']) && $_GET['filter_operator'] !== '' ? (int)$_GET['filter_operator'] : null;
 $filterStartDate = $_GET['filter_start_date'] ?? null;
 $filterEndDate = $_GET['filter_end_date'] ?? null;
 
-// 2. Fetch Data (Pass filters to listLogs)
 $logs = $logsManager->listLogs($filterMachine, $filterOperator, $filterStartDate, $filterEndDate);
 $users = $userManager->listUsers(); 
 $machines = $machineManager->listMachines();
@@ -25,10 +23,7 @@ $machines = $machineManager->listMachines();
 $message = '';
 $error = '';
 
-// --- HANDLE POST REQUESTS (Create/Edit/Delete) ---
 if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    
-    // Create
     if (isset($_POST['create'])) {
         $operatorId = (int)$_POST['operator_id'];
         $machineId = (int)$_POST['machine_id'];
@@ -37,7 +32,6 @@ if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $notes = trim($_POST['notes'] ?? '');
 
         if ($logsManager->createLogManual($operatorId, $machineId, $loginTime, $logoutTime, $notes)) {
-            // Redirect stripping POST data but KEEPING GET filters
             $redirectUrl = strtok($_SERVER["REQUEST_URI"], '?') . '?' . http_build_query($_GET) . '&msg=created';
             header('Location: ' . $redirectUrl);
             exit;
@@ -46,7 +40,6 @@ if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // Edit
     if (isset($_POST['edit'])) {
         $logId = (int)$_POST['log_id'];
         $operatorId = (int)$_POST['edit_operator_id'];
@@ -64,7 +57,6 @@ if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // Delete
     if (isset($_POST['delete'])) {
         $logId = (int)$_POST['log_id'];
         if ($logsManager->deleteLog($logId)) {
@@ -77,7 +69,6 @@ if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Handle Messages
 if (isset($_GET['msg'])) {
     if ($_GET['msg'] === 'created') $message = "Log entry created successfully.";
     if ($_GET['msg'] === 'updated') $message = "Log entry updated successfully.";

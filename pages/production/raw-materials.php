@@ -5,38 +5,31 @@ require_once INCLUDE_PATH . 'Database.php';
 require_once INCLUDE_PATH . 'RawMaterialManager.php';
 require_once INCLUDE_PATH . 'UserManager.php';
 require_once INCLUDE_PATH . 'MachineManager.php';
-// Assuming you have these, otherwise query DB directly
 require_once INCLUDE_PATH . 'ArticleManager.php'; 
 
 $isAdmin = isAdmin();
 $rmManager = new RawMaterialManager($pdo);
 $userManager = new UserManager($pdo);
 $machineManager = new MachineManager($pdo);
-$articleManager = new ArticleManager($pdo); // Required for article dropdown
+$articleManager = new ArticleManager($pdo); 
 
-// 1. Capture Filter Inputs
 $filterOrder = isset($_GET['filter_order']) && $_GET['filter_order'] !== '' ? (int)$_GET['filter_order'] : null;
 $filterBatch = $_GET['filter_batch'] ?? null;
 $filterStartDate = $_GET['filter_start_date'] ?? null;
 $filterEndDate = $_GET['filter_end_date'] ?? null;
 
-// 2. Fetch Data
 $logs = $rmManager->listLogs($filterOrder, $filterBatch, $filterStartDate, $filterEndDate);
 $users = $userManager->listUsers();
 $machines = $machineManager->listMachines();
-$articles = $articleManager->listArticles(); // Assuming this method exists
+$articles = $articleManager->listArticles(); 
 
-// Fetch Order IDs for dropdown (Simple query if no Manager exists)
 $ordersStmt = $pdo->query("SELECT OrderID FROM production_order ORDER BY OrderID DESC LIMIT 100");
 $orders = $ordersStmt->fetchAll(PDO::FETCH_ASSOC);
 
 $message = '';
 $error = '';
 
-// --- HANDLE POST REQUESTS ---
 if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST') {
-
-    // CREATE
     if (isset($_POST['create'])) {
         $orderId = (int)$_POST['order_id'];
         $operatorId = (int)$_POST['operator_id'];
@@ -56,7 +49,6 @@ if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // EDIT
     if (isset($_POST['edit'])) {
         $logId = (int)$_POST['log_id'];
         $orderId = (int)$_POST['edit_order_id'];
@@ -77,7 +69,6 @@ if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // DELETE
     if (isset($_POST['delete'])) {
         $logId = (int)$_POST['log_id'];
         if ($rmManager->deleteLog($logId)) {
@@ -90,7 +81,6 @@ if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Handle Messages
 if (isset($_GET['msg'])) {
     if ($_GET['msg'] === 'created') $message = "Entry created successfully.";
     if ($_GET['msg'] === 'updated') $message = "Entry updated successfully.";

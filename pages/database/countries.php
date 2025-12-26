@@ -7,20 +7,16 @@ require_once INCLUDE_PATH . 'CountryManager.php';
 $isAdmin = isAdmin();
 $countryManager = new CountryManager($pdo);
 
-// 1. Capture Filters
 $search = isset($_GET['search']) ? trim($_GET['search']) : null;
 
-// 2. Fetch Data
 $countries = $countryManager->listAll($search);
 
 $message = '';
 $error = '';
 
-// --- HANDLE POST REQUESTS ---
 if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $redirectUrl = strtok($_SERVER["REQUEST_URI"], '?') . '?' . http_build_query($_GET);
 
-    // CREATE
     if (isset($_POST['create'])) {
         if ($countryManager->create($_POST['name'], $_POST['iso_code'])) {
             header("Location: $redirectUrl&msg=created");
@@ -30,7 +26,6 @@ if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // EDIT
     if (isset($_POST['edit'])) {
         if ($countryManager->update((int)$_POST['country_id'], $_POST['edit_name'], $_POST['edit_iso_code'])) {
             header("Location: $redirectUrl&msg=updated");
@@ -40,7 +35,6 @@ if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // DELETE
     if (isset($_POST['delete'])) {
         if ($countryManager->delete((int)$_POST['country_id'])) {
             header("Location: $redirectUrl&msg=deleted");
@@ -51,7 +45,6 @@ if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Messages
 if (isset($_GET['msg'])) {
     if ($_GET['msg'] === 'created') $message = "Country added successfully.";
     if ($_GET['msg'] === 'updated') $message = "Country updated successfully.";

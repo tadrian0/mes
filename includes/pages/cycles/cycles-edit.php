@@ -1,15 +1,8 @@
 <?php
-// This PHP logic block will run on every page load *for every recipe*
-// which is inefficient but matches the provided `machines-edit.php` pattern.
-// A better pattern would move this logic to the top of cycles.php.
-
 if ($isAdmin) {
-    // Handle the edit/update of a recipe step
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_recipe'])) {
         $recipeId = (int) ($_POST['recipe_id'] ?? 0);
 
-        // Check if the submitted ID matches the recipe in the loop
-        // This is a safeguard against processing the wrong update
         if ($recipeId === $recipe['RecipeID']) {
             $sequence = (int) ($_POST['edit_sequence'] ?? 0);
             $operationDescription = !empty(trim($_POST['edit_operation_description'])) ? trim($_POST['edit_operation_description']) : null;
@@ -27,9 +20,6 @@ if ($isAdmin) {
         }
     }
 
-    // Handle the deletion of a recipe step
-    // Note: Your 'articles.php' example places this logic at the top of the main page.
-    // Your 'machines-edit.php' example places it here. I am following the 'machines-edit.php' example.
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_recipe'])) {
         $recipeId = (int) ($_POST['recipe_id'] ?? 0);
 

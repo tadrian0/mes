@@ -1,6 +1,7 @@
 <?php
 require_once $_SERVER['DOCUMENT_ROOT'] . '/mes/includes/Config.php';
 require_once INCLUDE_PATH . 'Database.php';
+//require_once INCLUDE_PATH . 'ApiAuth.php';
 
 header('Content-Type: application/json');
 
@@ -15,7 +16,6 @@ $response = [
 ];
 
 try {
-    // 1. Fetch Cities (Filtered by Country)
     $sqlCity = "SELECT DISTINCT c.Name FROM city c 
                 JOIN country co ON c.CountryID = co.CountryID 
                 WHERE 1=1";
@@ -29,7 +29,6 @@ try {
     $stmt->execute($paramsCity);
     $response['cities'] = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
-    // 2. Fetch Plants (Filtered by Country and City)
     $sqlPlant = "SELECT DISTINCT p.Name FROM plant p
                  JOIN city c ON p.CityID = c.CityID
                  JOIN country co ON c.CountryID = co.CountryID
@@ -48,7 +47,6 @@ try {
     $stmt->execute($paramsPlant);
     $response['plants'] = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
-    // 3. Fetch Sections (Filtered by Country, City, and Plant)
     $sqlSection = "SELECT DISTINCT s.Name FROM section s
                    JOIN plant p ON s.PlantID = p.PlantID
                    JOIN city c ON p.CityID = c.CityID

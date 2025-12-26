@@ -79,7 +79,6 @@ class MachineManager
         }
     }
 
-    // UPDATED: Now joins Plant -> City -> Country
     public function listMachines(): array
     {
         try {

@@ -9,18 +9,15 @@ $isAdmin = isAdmin();
 $cityManager = new CityManager($pdo);
 $countryManager = new CountryManager($pdo);
 
-// 1. Capture Filters
 $filterCountry = isset($_GET['filter_country']) && $_GET['filter_country'] !== '' ? (int)$_GET['filter_country'] : null;
 $search = isset($_GET['search']) ? trim($_GET['search']) : null;
 
-// 2. Fetch Data
 $cities = $cityManager->listAll($filterCountry, $search);
 $countries = $countryManager->listAll();
 
 $message = '';
 $error = '';
 
-// --- HANDLE POST REQUESTS ---
 if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $redirectUrl = strtok($_SERVER["REQUEST_URI"], '?') . '?' . http_build_query($_GET);
 
@@ -43,7 +40,6 @@ if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Messages
 if (isset($_GET['msg'])) {
     if ($_GET['msg'] === 'created') $message = "City added successfully.";
     if ($_GET['msg'] === 'updated') $message = "City updated successfully.";

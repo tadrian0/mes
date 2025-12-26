@@ -15,9 +15,6 @@ class ProductionLogsManager
     public function startLog(int $orderId, int $machineId, int $startOperatorId, ?string $startTime = null, ?string $notes = null): bool
     {
         try {
-            // Optional: Check if there is already an active log for this machine/order and close it?
-            // For now, we allow starting new ones freely.
-
             $stmt = $this->pdo->prepare("
                 INSERT INTO $this->tableName (ProductionOrderID, MachineID, StartOperatorID, StartTime, Status, Notes)
                 VALUES (?, ?, ?, ?, 'Active', ?)
@@ -51,7 +48,6 @@ class ProductionLogsManager
         }
     }
 
-    // Admin Update
     public function updateLog(int $logId, int $orderId, int $machineId, int $startOpId, ?int $endOpId, string $start, ?string $end, string $status, string $notes): bool
     {
         try {

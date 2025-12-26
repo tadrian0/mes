@@ -2,7 +2,7 @@
 $currentPage = basename($_SERVER['SCRIPT_NAME'], '.php');
 
 $productionPages = ['operator-logs', 'production-logs', 'machine-stops', 'raw-materials', 'rejects', 'batches', 'adjustments'];
-$databasePages   = ['users', 'articles', 'cycles', 'machines', 'countries', 'cities', 'plants', 'sections'];
+$databasePages   = ['users', 'articles', 'cycles', 'machines', 'countries', 'cities', 'plants', 'sections', 'reject-categories'];
 $securityPages = ['api-management', "audit-logs"];
 
 $isProductionOpen = in_array($currentPage, $productionPages);
@@ -80,6 +80,7 @@ function sidebarLink($href, $text, $currentPage, $iconClass = 'fa-circle-dot')
                 <?php echo sidebarLink('pages/database/cities', 'Cities', $currentPage, 'fa-location-dot'); ?>
                 <?php echo sidebarLink('pages/database/plants', 'Plants', $currentPage, 'fa-industry'); ?>
                 <?php echo sidebarLink('pages/database/sections', 'Sections', $currentPage, 'fa-gear'); ?>
+                <?php echo sidebarLink('pages/database/reject-categories', 'Reject categories', $currentPage, 'fa-book'); ?>
             </div>
         </div>
 

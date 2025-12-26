@@ -2,7 +2,7 @@
 $currentPage = basename($_SERVER['SCRIPT_NAME'], '.php');
 
 $productionPages = ['operator-logs', 'production-logs', 'machine-stops', 'raw-materials', 'rejects', 'batches', 'adjustments'];
-$databasePages   = ['users', 'articles', 'cycles', 'machines'];
+$databasePages   = ['users', 'articles', 'cycles', 'machines', 'countries', 'cities', 'plants', 'sections'];
 
 $isProductionOpen = in_array($currentPage, $productionPages);
 $isDatabaseOpen   = in_array($currentPage, $databasePages);
@@ -74,6 +74,10 @@ function sidebarLink($href, $text, $currentPage, $iconClass = 'fa-circle-dot')
                 <?php echo sidebarLink('pages/database/articles', 'Articles', $currentPage, 'fa-barcode'); ?>
                 <?php echo sidebarLink('pages/database/cycles', 'Cycles', $currentPage, 'fa-rotate'); ?>
                 <?php echo sidebarLink('pages/database/machines', 'Machines', $currentPage, 'fa-robot'); ?>
+                <?php echo sidebarLink('pages/database/countries', 'Countries', $currentPage, 'fa-globe'); ?>
+                <?php echo sidebarLink('pages/database/cities', 'Cities', $currentPage, 'fa-location-dot'); ?>
+                <?php echo sidebarLink('pages/database/plants', 'Plants', $currentPage, 'fa-industry'); ?>
+                <?php echo sidebarLink('pages/database/sections', 'Sections', $currentPage, 'fa-gear'); ?>
             </div>
         </div>
 

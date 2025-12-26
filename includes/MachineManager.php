@@ -9,22 +9,20 @@ class MachineManager
         $this->pdo = $pdo;
     }
 
-    public function createMachine(string $name, string $status = 'Active', float $capacity = 0.0, ?string $lastMaintenanceDate = null, string $location = '', string $model = ''): bool
+    public function createMachine(string $name, string $status = 'Active', float $capacity = 0.0, ?string $lastMaintenanceDate = null, string $location = '', string $model = '', ?int $plantId = null, ?int $sectionId = null): bool
     {
         if (empty($name) || empty($location) || empty($model) || $capacity <= 0) {
             return false;
         }
         
-        if (empty($lastMaintenanceDate)) {
-            $lastMaintenanceDate = null;
-        }
+        $lastMaintenanceDate = empty($lastMaintenanceDate) ? null : $lastMaintenanceDate;
 
         try {
             $stmt = $this->pdo->prepare("
-                INSERT INTO $this->tableName (Name, Status, Capacity, LastMaintenanceDate, Location, Model)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO $this->tableName (Name, Status, Capacity, LastMaintenanceDate, Location, Model, PlantID, SectionID)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ");
-            return $stmt->execute([$name, $status, $capacity, $lastMaintenanceDate, $location, $model]);
+            return $stmt->execute([$name, $status, $capacity, $lastMaintenanceDate, $location, $model, $plantId, $sectionId]);
         } catch (PDOException $e) {
             return false;
         }
@@ -33,11 +31,7 @@ class MachineManager
     public function getMachineById(int $machineId): ?array
     {
         try {
-            $stmt = $this->pdo->prepare("
-                SELECT MachineID, Name, Status, Capacity, LastMaintenanceDate, Location, Model, CreatedAt, UpdatedAt
-                FROM $this->tableName
-                WHERE MachineID = ?
-            ");
+            $stmt = $this->pdo->prepare("SELECT * FROM $this->tableName WHERE MachineID = ?");
             $stmt->execute([$machineId]);
             return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
         } catch (PDOException $e) {
@@ -45,39 +39,24 @@ class MachineManager
         }
     }
 
-    public function updateMachine(int $machineId, ?string $name = null, ?string $status = null, ?float $capacity = null, ?string $lastMaintenanceDate = null, ?string $location = null, ?string $model = null): bool
+    public function updateMachine(int $machineId, ?string $name, ?string $status, ?float $capacity, ?string $lastMaintenanceDate, ?string $location, ?string $model, ?int $plantId, ?int $sectionId): bool
     {
         $updates = [];
         $params = [];
 
-        if ($name !== null && $name !== '') {
-            $updates[] = 'Name = ?';
-            $params[] = $name;
+        if ($name !== null) { $updates[] = 'Name = ?'; $params[] = $name; }
+        if ($status !== null) { $updates[] = 'Status = ?'; $params[] = $status; }
+        if ($capacity !== null) { $updates[] = 'Capacity = ?'; $params[] = $capacity; }
+        if ($lastMaintenanceDate !== null) { 
+            $updates[] = 'LastMaintenanceDate = ?'; 
+            $params[] = empty($lastMaintenanceDate) ? null : $lastMaintenanceDate; 
         }
-        if ($status !== null && $status !== '') {
-            $updates[] = 'Status = ?';
-            $params[] = $status;
-        }
-        if ($capacity !== null && $capacity > 0) {
-            $updates[] = 'Capacity = ?';
-            $params[] = $capacity;
-        }
-        if ($lastMaintenanceDate !== null) {
-            $updates[] = 'LastMaintenanceDate = ?';
-            $params[] = empty($lastMaintenanceDate) ? null : $lastMaintenanceDate;
-        }
-        if ($location !== null && $location !== '') {
-            $updates[] = 'Location = ?';
-            $params[] = $location;
-        }
-        if ($model !== null && $model !== '') {
-            $updates[] = 'Model = ?';
-            $params[] = $model;
-        }
+        if ($location !== null) { $updates[] = 'Location = ?'; $params[] = $location; }
+        if ($model !== null) { $updates[] = 'Model = ?'; $params[] = $model; }
+        if ($plantId !== null) { $updates[] = 'PlantID = ?'; $params[] = $plantId ?: null; }
+        if ($sectionId !== null) { $updates[] = 'SectionID = ?'; $params[] = $sectionId ?: null; }
 
-        if (empty($updates)) {
-            return false;
-        }
+        if (empty($updates)) { return false; }
 
         $params[] = $machineId;
 
@@ -100,14 +79,25 @@ class MachineManager
         }
     }
 
+    // UPDATED: Now joins Plant -> City -> Country
     public function listMachines(): array
     {
         try {
-            $stmt = $this->pdo->query("
-                SELECT MachineID, Name, Status, Capacity, LastMaintenanceDate, Location, Model, CreatedAt, UpdatedAt
-                FROM $this->tableName
-                ORDER BY Name ASC
-            ");
+            $sql = "SELECT 
+                        m.*, 
+                        p.Name AS PlantName, 
+                        s.Name AS SectionName,
+                        ci.Name AS CityName,
+                        co.Name AS CountryName,
+                        co.ISOCode
+                    FROM $this->tableName m
+                    LEFT JOIN plant p ON m.PlantID = p.PlantID
+                    LEFT JOIN section s ON m.SectionID = s.SectionID
+                    LEFT JOIN city ci ON p.CityID = ci.CityID
+                    LEFT JOIN country co ON ci.CountryID = co.CountryID
+                    ORDER BY m.Name ASC";
+            
+            $stmt = $this->pdo->query($sql);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             return [];

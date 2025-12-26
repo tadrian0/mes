@@ -3,58 +3,54 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/mes/includes/Config.php';
 require_once INCLUDE_PATH . 'IsAdmin.php';
 require_once INCLUDE_PATH . 'Database.php';
 require_once INCLUDE_PATH . 'MachineManager.php';
+require_once INCLUDE_PATH . 'CountryManager.php';
+// Plant/Section/City managers loaded for Add/Edit modals, but filters load via AJAX now.
+require_once INCLUDE_PATH . 'PlantManager.php';
+require_once INCLUDE_PATH . 'SectionManager.php';
+require_once INCLUDE_PATH . 'CityManager.php';
 
 $isAdmin = isAdmin();
 $machineManager = new MachineManager($pdo);
+$countryManager = new CountryManager($pdo);
+
+// We only need Countries initially for the filter; others load via cascading AJAX
+$countries = $countryManager->listAll();
+
+// For Add/Edit Modals (still need full lists or dynamic logic there too, keeping full lists for simplicity in modals)
+$plantManager = new PlantManager($pdo);
+$sectionManager = new SectionManager($pdo);
+$allPlants = $plantManager->listAll();
+$allSections = $sectionManager->listAll();
+
 $message = '';
 $error = '';
 
+// --- HANDLE POST REQUESTS (Create/Edit/Delete) ---
 if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    
-    // --- CREATE ---
+    $redirectUrl = strtok($_SERVER["REQUEST_URI"], '?');
+
     if (isset($_POST['create'])) {
-        $name = trim($_POST['name'] ?? '');
-        $status = trim($_POST['status'] ?? 'Active');
-        $capacity = floatval(trim($_POST['capacity'] ?? 0));
-        $lastMaintenanceDate = trim($_POST['last_maintenance_date'] ?? '');
-        $location = trim($_POST['location'] ?? '');
-        $model = trim($_POST['model'] ?? '');
-
-        if ($machineManager->createMachine($name, $status, $capacity, $lastMaintenanceDate, $location, $model)) {
-            header('Location: ' . $siteBaseUrl . 'pages/database/machines.php?msg=created');
-            exit;
-        } else {
-            $error = 'Error creating machine.';
-        }
+        $plantId = !empty($_POST['plant_id']) ? (int)$_POST['plant_id'] : null;
+        $sectionId = !empty($_POST['section_id']) ? (int)$_POST['section_id'] : null;
+        
+        if ($machineManager->createMachine($_POST['name'], $_POST['status'], $_POST['capacity'], $_POST['last_maintenance_date'], $_POST['location'], $_POST['model'], $plantId, $sectionId)) {
+            header("Location: $redirectUrl?msg=created"); exit;
+        } else { $error = 'Error creating machine.'; }
     }
 
-    // --- EDIT ---
     if (isset($_POST['edit'])) {
-        $machineId = (int) ($_POST['machine_id'] ?? 0);
-        $name = trim($_POST['edit_name'] ?? '');
-        $status = trim($_POST['edit_status'] ?? '');
-        $capacity = floatval(trim($_POST['edit_capacity'] ?? 0));
-        $lastMaintenanceDate = trim($_POST['edit_last_maintenance_date'] ?? '');
-        $location = trim($_POST['edit_location'] ?? '');
-        $model = trim($_POST['edit_model'] ?? '');
+        $plantId = !empty($_POST['edit_plant_id']) ? (int)$_POST['edit_plant_id'] : null;
+        $sectionId = !empty($_POST['edit_section_id']) ? (int)$_POST['edit_section_id'] : null;
 
-        if ($machineManager->updateMachine($machineId, $name, $status, $capacity, $lastMaintenanceDate, $location, $model)) {
-            header('Location: ' . $siteBaseUrl . 'pages/database/machines.php?msg=updated');
-            exit;
-        } else {
-            $error = 'Error updating machine.';
-        }
+        if ($machineManager->updateMachine($_POST['machine_id'], $_POST['edit_name'], $_POST['edit_status'], $_POST['edit_capacity'], $_POST['edit_last_maintenance_date'], $_POST['edit_location'], $_POST['edit_model'], $plantId, $sectionId)) {
+            header("Location: $redirectUrl?msg=updated"); exit;
+        } else { $error = 'Error updating machine.'; }
     }
 
-    // --- DELETE ---
     if (isset($_POST['delete'])) {
-        $machineId = (int) ($_POST['machine_id'] ?? 0);
-        if ($machineManager->deleteMachine($machineId)) {
-            header('Location: ' . $siteBaseUrl . 'includes/pages/machines/machines.php?msg=deleted');
-            exit;
-        } else {
-            $error = 'Error deleting machine.';
-        }
+        if ($machineManager->deleteMachine($_POST['machine_id'])) {
+            header("Location: $redirectUrl?msg=deleted"); exit;
+        } else { $error = 'Error deleting machine.'; }
     }
 }
 
@@ -63,181 +59,359 @@ if (isset($_GET['msg'])) {
     if ($_GET['msg'] === 'updated') $message = "Machine updated successfully.";
     if ($_GET['msg'] === 'deleted') $message = "Machine deleted successfully.";
 }
-
-$machines = $machineManager->listMachines();
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MES Backoffice - Machines</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <title>MES - Machines</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
     <link href="<?= $siteBaseUrl ?>styles/backoffice.css" rel="stylesheet" />
+    
+    <style>
+        .dataTables_filter { display: none; } /* Hide default DataTables search */
+        .table td { vertical-align: middle; }
+    </style>
 </head>
 
 <body>
     <?php include INCLUDE_PATH . 'Sidebar.php'; ?>
 
     <div class="content">
-        <h1>Machines</h1>
+        <h1>Machines Registry</h1>
         
-        <?php if ($message): ?>
-            <div class="alert alert-success"><?php echo htmlspecialchars($message); ?></div>
-        <?php endif; ?>
-        <?php if ($error): ?>
-            <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
-        <?php endif; ?>
+        <?php if ($message): ?><div class="alert alert-success alert-dismissible fade show" role="alert"><?= htmlspecialchars($message) ?><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div><?php endif; ?>
+        <?php if ($error): ?><div class="alert alert-danger alert-dismissible fade show" role="alert"><?= htmlspecialchars($error) ?><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div><?php endif; ?>
 
-        <?php if ($isAdmin): ?>
-            <div class="mb-3">
-                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addMachineModal">
-                    Add New Machine
-                </button>
-
-                <div class="modal fade" id="addMachineModal" tabindex="-1" aria-labelledby="addMachineModalLabel" aria-hidden="true">
-                    <div class="modal-dialog">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="addMachineModalLabel">Add New Machine</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                            </div>
-                            <form method="post" action="">
-                                <div class="modal-body">
-                                    <div class="mb-3">
-                                        <label for="name" class="form-label">Name</label>
-                                        <input type="text" class="form-control" id="name" name="name" required>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="status" class="form-label">Status</label>
-                                        <select class="form-control" id="status" name="status" required>
-                                            <option value="Active">Active</option>
-                                            <option value="Inactive">Inactive</option>
-                                            <option value="Maintenance">Maintenance</option>
-                                        </select>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="capacity" class="form-label">Capacity (tons)</label>
-                                        <input type="number" step="0.01" class="form-control" id="capacity" name="capacity" required>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="last_maintenance_date" class="form-label">Last Maintenance Date</label>
-                                        <input type="date" class="form-control" id="last_maintenance_date" name="last_maintenance_date">
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="location" class="form-label">Location</label>
-                                        <input type="text" class="form-control" id="location" name="location" required>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="model" class="form-label">Model</label>
-                                        <input type="text" class="form-control" id="model" name="model" required>
-                                    </div>
-                                </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                    <button type="submit" name="create" class="btn btn-primary">Add Machine</button>
-                                </div>
-                            </form>
+        <div class="card mb-3 border-0 shadow-sm">
+            <div class="card-body bg-light rounded">
+                <div class="row g-2 align-items-center mb-3">
+                    <div class="col-md-4">
+                        <div class="input-group">
+                            <span class="input-group-text bg-white"><i class="fa-solid fa-search text-muted"></i></span>
+                            <input type="text" class="form-control" id="globalSearch" placeholder="Search machine, model, location...">
                         </div>
+                    </div>
+                    <div class="col-md-8 text-end">
+                        <button class="btn btn-outline-secondary me-1" id="refreshBtn"><i class="fa-solid fa-rotate"></i> Refresh Data</button>
+                        <?php if ($isAdmin): ?>
+                            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addMachineModal"><i class="fa-solid fa-plus"></i> Add Machine</button>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <div class="row g-2">
+                    <div class="col-md-3">
+                        <label class="form-label small text-muted">Country</label>
+                        <select class="form-select form-select-sm filter-input" id="filter_country" data-col-index="3">
+                            <option value="">All Countries</option>
+                            <?php foreach ($countries as $c): ?>
+                                <option value="<?= htmlspecialchars($c['Name']) ?>"><?= htmlspecialchars($c['Name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small text-muted">City</label>
+                        <select class="form-select form-select-sm filter-input" id="filter_city" data-col-index="4">
+                            <option value="">All Cities</option>
+                            </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small text-muted">Plant</label>
+                        <select class="form-select form-select-sm filter-input" id="filter_plant" data-col-index="5">
+                            <option value="">All Plants</option>
+                            </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small text-muted">Section</label>
+                        <select class="form-select form-select-sm filter-input" id="filter_section" data-col-index="6">
+                            <option value="">All Sections</option>
+                            </select>
                     </div>
                 </div>
             </div>
-        <?php endif; ?>
+        </div>
 
-        <h3 class="mt-4">Machine List</h3>
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Name</th>
-                    <th>Status</th>
-                    <th>Capacity (tons)</th>
-                    <th>Last Maintenance</th>
-                    <th>Location</th>
-                    <th>Model</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($machines as $machine): ?>
-                    <tr>
-                        <td><?php echo htmlspecialchars($machine['MachineID']); ?></td>
-                        <td><?php echo htmlspecialchars($machine['Name']); ?></td>
-                        <td><?php echo htmlspecialchars($machine['Status']); ?></td>
-                        <td><?php echo htmlspecialchars($machine['Capacity']); ?></td>
-                        <td><?php echo htmlspecialchars($machine['LastMaintenanceDate'] ?? 'N/A'); ?></td>
-                        <td><?php echo htmlspecialchars($machine['Location']); ?></td>
-                        <td><?php echo htmlspecialchars($machine['Model']); ?></td>
-                        <td>
-                            <?php if ($isAdmin): ?>
-                                <button type="button" class="btn btn-sm btn-warning" data-bs-toggle="modal"
-                                    data-bs-target="#editModal<?php echo $machine['MachineID']; ?>">
-                                    Edit
-                                </button>
-                                
-                                <form method="post" action="" style="display: inline;"
-                                    onsubmit="return confirm('Are you sure you want to delete this machine?');">
-                                    <input type="hidden" name="machine_id" value="<?php echo $machine['MachineID']; ?>">
-                                    <button type="submit" name="delete" class="btn btn-sm btn-danger">Delete</button>
-                                </form>
-
-                                <div class="modal fade" id="editModal<?php echo $machine['MachineID']; ?>" tabindex="-1"
-                                    aria-labelledby="editModalLabel<?php echo $machine['MachineID']; ?>" aria-hidden="true">
-                                    <div class="modal-dialog">
-                                        <div class="modal-content">
-                                            <div class="modal-header">
-                                                <h5 class="modal-title" id="editModalLabel<?php echo $machine['MachineID']; ?>">Edit Machine</h5>
-                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                            </div>
-                                            <form method="post" action="">
-                                                <div class="modal-body">
-                                                    <input type="hidden" name="machine_id" value="<?php echo $machine['MachineID']; ?>">
-                                                    <div class="mb-3">
-                                                        <label for="edit_name" class="form-label">Name</label>
-                                                        <input type="text" class="form-control" name="edit_name" value="<?php echo htmlspecialchars($machine['Name']); ?>" required>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label for="edit_status" class="form-label">Status</label>
-                                                        <select class="form-control" name="edit_status" required>
-                                                            <option value="Active" <?php echo $machine['Status'] === 'Active' ? 'selected' : ''; ?>>Active</option>
-                                                            <option value="Inactive" <?php echo $machine['Status'] === 'Inactive' ? 'selected' : ''; ?>>Inactive</option>
-                                                            <option value="Maintenance" <?php echo $machine['Status'] === 'Maintenance' ? 'selected' : ''; ?>>Maintenance</option>
-                                                        </select>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label for="edit_capacity" class="form-label">Capacity (tons)</label>
-                                                        <input type="number" step="0.01" class="form-control" name="edit_capacity" value="<?php echo htmlspecialchars($machine['Capacity']); ?>" required>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label for="edit_last_maintenance_date" class="form-label">Last Maintenance Date</label>
-                                                        <input type="date" class="form-control" name="edit_last_maintenance_date" value="<?php echo htmlspecialchars($machine['LastMaintenanceDate'] ?? ''); ?>">
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label for="edit_location" class="form-label">Location</label>
-                                                        <input type="text" class="form-control" name="edit_location" value="<?php echo htmlspecialchars($machine['Location']); ?>" required>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label for="edit_model" class="form-label">Model</label>
-                                                        <input type="text" class="form-control" name="edit_model" value="<?php echo htmlspecialchars($machine['Model']); ?>" required>
-                                                    </div>
-                                                </div>
-                                                <div class="modal-footer">
-                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                                    <button type="submit" name="edit" class="btn btn-primary">Save changes</button>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
-                                <?php endif; ?>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
+        <div class="card shadow-sm">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table id="machinesTable" class="table table-hover table-striped w-100 mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Model</th>
+                                <th>Country</th>
+                                <th>City</th>
+                                <th>Plant</th>
+                                <th>Section</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <?php if ($isAdmin): ?>
+    <div class="modal fade" id="addMachineModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">Add New Machine</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <form method="post">
+                    <div class="modal-body">
+                        <div class="row mb-2">
+                            <div class="col"><label>Name</label><input type="text" name="name" class="form-control" required></div>
+                            <div class="col"><label>Model</label><input type="text" name="model" class="form-control" required></div>
+                        </div>
+                        <div class="row mb-2">
+                            <div class="col">
+                                <label>Plant</label>
+                                <select name="plant_id" class="form-select">
+                                    <option value="">Select...</option>
+                                    <?php foreach ($allPlants as $p): ?><option value="<?= $p['PlantID'] ?>"><?= htmlspecialchars($p['Name']) ?></option><?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col">
+                                <label>Section</label>
+                                <select name="section_id" class="form-select">
+                                    <option value="">Select...</option>
+                                    <?php foreach ($allSections as $s): ?><option value="<?= $s['SectionID'] ?>"><?= htmlspecialchars($s['Name']) . ' - ' . htmlspecialchars($s['PlantName']) ?></option><?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mb-2">
+                            <div class="col"><label>Status</label><select name="status" class="form-select"><option>Active</option><option>Inactive</option><option>Maintenance</option></select></div>
+                            <div class="col"><label>Capacity (tons)</label><input type="number" step="0.01" name="capacity" class="form-control" required></div>
+                        </div>
+                        <div class="row mb-2">
+                            <div class="col"><label>Location (Grid)</label><input type="text" name="location" class="form-control" required></div>
+                            <div class="col"><label>Last Maint.</label><input type="date" name="last_maintenance_date" class="form-control"></div>
+                        </div>
+                    </div>
+                    <div class="modal-footer"><button type="submit" name="create" class="btn btn-primary">Save</button></div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="editMachineModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">Edit Machine</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <form method="post">
+                    <div class="modal-body">
+                        <input type="hidden" name="machine_id" id="edit_machine_id">
+                        <div class="row mb-2">
+                            <div class="col"><label>Name</label><input type="text" name="edit_name" id="edit_name" class="form-control" required></div>
+                            <div class="col"><label>Model</label><input type="text" name="edit_model" id="edit_model" class="form-control" required></div>
+                        </div>
+                        <div class="row mb-2">
+                            <div class="col">
+                                <label>Plant</label>
+                                <select name="edit_plant_id" id="edit_plant_id" class="form-select">
+                                    <option value="">Select...</option>
+                                    <?php foreach ($allPlants as $p): ?><option value="<?= $p['PlantID'] ?>"><?= htmlspecialchars($p['Name']) ?></option><?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col">
+                                <label>Section</label>
+                                <select name="edit_section_id" id="edit_section_id" class="form-select">
+                                    <option value="">Select...</option>
+                                    <?php foreach ($allSections as $s): ?><option value="<?= $s['SectionID'] ?>"><?= htmlspecialchars($s['Name']) . ' - ' . htmlspecialchars($s['PlantName']) ?></option><?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mb-2">
+                            <div class="col"><label>Status</label><select name="edit_status" id="edit_status" class="form-select"><option>Active</option><option>Inactive</option><option>Maintenance</option></select></div>
+                            <div class="col"><label>Capacity</label><input type="number" step="0.01" name="edit_capacity" id="edit_capacity" class="form-control" required></div>
+                        </div>
+                        <div class="row mb-2">
+                            <div class="col"><label>Location</label><input type="text" name="edit_location" id="edit_location" class="form-control" required></div>
+                            <div class="col"><label>Last Maint.</label><input type="date" name="edit_last_maintenance_date" id="edit_last_maintenance_date" class="form-control"></div>
+                        </div>
+                    </div>
+                    <div class="modal-footer"><button type="submit" name="edit" class="btn btn-primary">Update</button></div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+
+    <script>
+        $(document).ready(function() {
+            // 1. Initialize DataTable with API source
+            var table = $('#machinesTable').DataTable({
+                ajax: '<?= $siteBaseUrl ?>api/machines-fetch.php',
+                columns: [
+                    { data: 'MachineID' },
+                    { 
+                        data: 'Name',
+                        render: function(data, type, row) {
+                            return `<div class="fw-bold">${data}</div><small class="text-muted">${row.Location}</small>`;
+                        }
+                    },
+                    { data: 'Model' },
+                    { data: 'CountryName', defaultContent: '-' },
+                    { data: 'CityName', defaultContent: '-' },
+                    { data: 'PlantName', defaultContent: '-' },
+                    { data: 'SectionName', defaultContent: '-' },
+                    { 
+                        data: 'Status',
+                        render: function(data) {
+                            let badge = 'warning';
+                            if(data === 'Active') badge = 'success';
+                            if(data === 'Inactive') badge = 'secondary';
+                            return `<span class="badge text-bg-${badge}">${data}</span>`;
+                        }
+                    },
+                    { 
+                        data: null,
+                        orderable: false,
+                        render: function(data, type, row) {
+                            <?php if ($isAdmin): ?>
+                            let rowData = encodeURIComponent(JSON.stringify(row));
+                            return `
+                                <button class="btn btn-sm btn-warning btn-edit" data-row="${rowData}"><i class="fa-solid fa-pen"></i></button>
+                                <form method="post" class="d-inline" onsubmit="return confirm('Delete?');">
+                                    <input type="hidden" name="machine_id" value="${row.MachineID}">
+                                    <button type="submit" name="delete" class="btn btn-sm btn-danger"><i class="fa-solid fa-trash"></i></button>
+                                </form>
+                            `;
+                            <?php else: ?>
+                            return '';
+                            <?php endif; ?>
+                        }
+                    }
+                ],
+                order: [[ 1, 'asc' ]],
+                pageLength: 10,
+                lengthMenu: [10, 25, 50, 100],
+                language: { search: "_INPUT_", searchPlaceholder: "Search records..." }
+            });
+
+            // 2. Global Search
+            $('#globalSearch').on('keyup', function() {
+                table.search(this.value).draw();
+            });
+
+            // 3. Cascading Filters Logic
+            
+            // Initial Load of all filters is handled by page load PHP for Countries.
+            // On page load, trigger an update to load Cities/Plants/Sections for "All Countries"
+            updateCascadingOptions();
+
+            // Listeners
+            $('#filter_country, #filter_city, #filter_plant').on('change', function() {
+                // Determine which filter triggered the change to clear downstream values
+                let id = $(this).attr('id');
+                if (id === 'filter_country') {
+                    $('#filter_city').val('');
+                    $('#filter_plant').val('');
+                    $('#filter_section').val('');
+                } else if (id === 'filter_city') {
+                    $('#filter_plant').val('');
+                    $('#filter_section').val('');
+                } else if (id === 'filter_plant') {
+                    $('#filter_section').val('');
+                }
+
+                // Apply DataTables search immediately for the changed column
+                applyTableFilters();
+                
+                // Fetch new options for downstream dropdowns
+                updateCascadingOptions();
+            });
+
+            $('#filter_section').on('change', function() {
+                applyTableFilters();
+            });
+
+            function applyTableFilters() {
+                $('.filter-input').each(function() {
+                    let colIndex = $(this).data('col-index');
+                    let val = $.fn.dataTable.util.escapeRegex($(this).val());
+                    table.column(colIndex).search(val ? '^'+val+'$' : '', true, false);
+                });
+                table.draw();
+            }
+
+            function updateCascadingOptions() {
+                let country = $('#filter_country').val();
+                let city    = $('#filter_city').val();
+                let plant   = $('#filter_plant').val();
+
+                $.ajax({
+                    url: '<?= $siteBaseUrl ?>api/get-filter-options.php',
+                    data: { country: country, city: city, plant: plant },
+                    dataType: 'json',
+                    success: function(response) {
+                        // Helper to repopulate select
+                        function populate(selector, data, currentValue) {
+                            let $el = $(selector);
+                            $el.empty();
+                            $el.append('<option value="">All</option>');
+                            data.forEach(function(item) {
+                                let selected = (item === currentValue) ? 'selected' : '';
+                                $el.append(`<option value="${item}" ${selected}>${item}</option>`);
+                            });
+                        }
+
+                        // Only update downstream dropdowns if they are "All" (empty) or strictly need refresh
+                        // We preserve value if it still exists in the new list, otherwise reset
+                        
+                        // Update City (only if Country changed, really, but safe to refresh)
+                        if (!$('#filter_city').val()) {
+                            populate('#filter_city', response.cities, '');
+                        } else {
+                            // If city is selected, check if it's still valid, if not reset
+                            let current = $('#filter_city').val();
+                            populate('#filter_city', response.cities, current);
+                            if (response.cities.indexOf(current) === -1) $('#filter_city').val(''); 
+                        }
+
+                        // Update Plant
+                        let currentPlant = $('#filter_plant').val();
+                        populate('#filter_plant', response.plants, currentPlant);
+                        
+                        // Update Section
+                        let currentSection = $('#filter_section').val();
+                        populate('#filter_section', response.sections, currentSection);
+                    }
+                });
+            }
+
+            // 4. Refresh Button
+            $('#refreshBtn').on('click', function() {
+                table.ajax.reload(null, false);
+            });
+
+            // 5. Edit Modal
+            $('#machinesTable').on('click', '.btn-edit', function() {
+                let rowData = JSON.parse(decodeURIComponent($(this).data('row')));
+                $('#edit_machine_id').val(rowData.MachineID);
+                $('#edit_name').val(rowData.Name);
+                $('#edit_model').val(rowData.Model);
+                $('#edit_plant_id').val(rowData.PlantID);
+                $('#edit_section_id').val(rowData.SectionID);
+                $('#edit_status').val(rowData.Status);
+                $('#edit_capacity').val(rowData.Capacity);
+                $('#edit_location').val(rowData.Location);
+                $('#edit_last_maintenance_date').val(rowData.LastMaintenanceDate);
+                new bootstrap.Modal(document.getElementById('editMachineModal')).show();
+            });
+        });
+    </script>
 </body>
 </html>

@@ -56,8 +56,6 @@ We are actively working on the following modules to bring the system to maturity
 
 The system relies on a relational database structure designed for integrity and traceability.
 
-
-
 **Core Entities:**
 * `plant`, `section`, `machine` (Assets)
 * `user` (Operators/Admins)
@@ -79,12 +77,12 @@ Currently, the project is configured for a standard XAMPP/LAMP stack manual depl
     Navigate to your web server's root directory (e.g., `C:\xampp\htdocs`).
     ```bash
     cd C:\xampp\htdocs
-    git clone [https://github.com/your-username/your-repo-name.git](https://github.com/your-username/your-repo-name.git) mes
+    git clone [https://github.com/tadrian0/mes.git](https://github.com/tadrian0/mes.git) mes
     ```
 
 2.  **Database Configuration:**
     * Create a new database named `xooiduyr_mes` (or similar).
-    * **Import Data:** Please contact the repository author to request the `dummy_data.sql` file or the latest structure dump (`xooiduyr_mes (15).sql`).
+    * **Import Data:** Please contact the repository author to request the `dummy_data.sql` file or the latest structure dump (e.g. `xooiduyr_mes.sql`).
     * Import the SQL file via phpMyAdmin or CLI:
         ```bash
         mysql -u root -p xooiduyr_mes < xooiduyr_mes.sql

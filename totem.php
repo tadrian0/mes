@@ -1,113 +1,133 @@
 <?php
+require_once 'includes/Config.php';
+require_once 'includes/Database.php';
+require_once 'includes/MachineManager.php';
+
 session_start();
+
+$machineId = isset($_GET['machine_id']) ? (int)$_GET['machine_id'] : 0;
+$machineManager = new MachineManager($pdo);
+$machine = $machineManager->getMachineById($machineId);
+
+if (!$machine) {
+    die('<div style="color:white; background:red; padding:20px; text-align:center; font-family:sans-serif;">
+            <h1>Error</h1>
+            <p>Machine ID not found or invalid.</p>
+            <a href="login.php" style="color:white;">Go Back</a>
+         </div>');
+}
+
+$statusClass = match($machine['Status']) {
+    'Active' => 'status-working',
+    'Inactive' => 'status-stopped',
+    'Maintenance' => 'status-maintenance',
+    default => ''
+};
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>MES Totem</title>
-
+    <title><?= htmlspecialchars($machine['Name']) ?></title>
     <link rel="stylesheet" href="totem.css"/>
 </head>
 
 <body>
 
 <div id="header">
-    <div id="header-left">
-        <button>Login</button>
-
-        <div id="operators">
-            <div class="operator-slot">Op 1</div>
-            <div class="operator-slot">Op 2</div>
-            <div class="operator-slot">Op 3</div>
-            <div class="operator-slot">Op 4</div>
-            <div class="operator-slot">Op 5</div>
-            <div class="operator-slot">Op 6</div>
-        </div>
-
-        <button class="secondary">Logout</button>
+    <div class="auth-btn-wrapper">
+        <button id="btn-login">Login</button>
     </div>
 
-    <div id="logo">
-        <img src="PATH_TO_LOGO.png" alt="MES Logo">
+    <div id="operators">
+        <div class="operator-slot empty">Op Slot 1</div>
+        <div class="operator-slot empty">Op Slot 2</div>
+        <div class="operator-slot empty">Op Slot 3</div>
+        <div class="operator-slot empty">Op Slot 4</div>
+        <div class="operator-slot empty">Op Slot 5</div>
+        <div class="operator-slot empty">Op Slot 6</div>
+    </div>
+
+    <div id="header-right">
+        <button class="secondary" id="btn-logout">Logout</button>
     </div>
 </div>
 
-<!-- ===== MAIN BODY ===== -->
 <div id="main">
-
-    <!-- === PRODUCTION AREA === -->
     <div id="production-area">
 
         <div class="panel">
-            <h3>Production Status</h3>
-            <p>State: <strong>Working / Setup / No Order</strong></p>
-            <p>Produced: <strong>0 / 0</strong></p>
-
+            <h3>Current Production</h3>
+            <p>Order No: <strong>PO-9999</strong></p>
+            <p>Part: <strong>Sample Component A</strong></p>
+            
             <div class="progress-container">
-                <div class="progress-bar"></div>
+                <div class="progress-bar" style="width: 45%;">45%</div>
             </div>
-        </div>
-
-        <div class="panel">
-            <h3>Performance</h3>
-            <p>Stroke Rate: <strong>-- / min</strong></p>
-            <p>Expected Prod/hour: <strong>--</strong></p>
-            <p>Actual Prod/hour: <strong>--</strong></p>
-            <p>Operators: <strong>Expected -- / Actual --</strong></p>
-        </div>
-
-        <div class="panel">
-            <h3>Production Order</h3>
-            <p>Order No: --</p>
-            <p>Part Number: --</p>
-            <p>Description: --</p>
-            <p>Packaging: Gitterbox</p>
-            <p>Qty / Packaging: 1000</p>
-
-            <button>Stop Production</button>
-            <button class="secondary">Suspend</button>
-            <button class="secondary">Adjustments</button>
+            
+            <div style="margin-top:15px; display:flex; gap:10px;">
+                <button class="large-btn">Stop Production</button>
+                <button class="large-btn secondary">Suspend</button>
+            </div>
         </div>
 
     </div>
 
-    <!-- === MACHINE STATUS === -->
     <div id="machine-panel">
-        <div class="panel">
-            <h3>Machine</h3>
-            <p>Status: <span class="status-working">WORKING</span></p>
-            <p>Clock: <strong>--:--:--</strong></p>
-            <button class="secondary">Stop Reason</button>
-            <button class="secondary">Warn</button>
+        <div class="panel h-100">
+            <h3>Machine Info</h3>
+            
+            <div class="machine-detail">
+                <span class="label">Name:</span>
+                <span class="value"><?= htmlspecialchars($machine['Name']) ?></span>
+            </div>
+
+            <div class="machine-detail">
+                <span class="label">Model:</span>
+                <span class="value"><?= htmlspecialchars($machine['Model']) ?></span>
+            </div>
+
+            <div class="machine-detail">
+                <span class="label">Loc:</span>
+                <span class="value"><?= htmlspecialchars($machine['Location']) ?></span>
+            </div>
+
+            <hr>
+
+            <div class="machine-detail">
+                <span class="label">Status:</span>
+                <span class="value <?= $statusClass ?>"><?= htmlspecialchars($machine['Status']) ?></span>
+            </div>
+
+            <div class="machine-detail">
+                <span class="label">Capacity:</span>
+                <span class="value"><?= htmlspecialchars($machine['Capacity']) ?> t/h</span>
+            </div>
+
+            <div class="mt-auto">
+                <button class="secondary w-100 mb-2">Declare Breakdown</button>
+                <button class="secondary w-100">Call Maintenance</button>
+            </div>
         </div>
     </div>
 
 </div>
 
-<!-- ===== FOOTER ===== -->
 <div id="footer">
-
     <div id="qc" class="footer-section">
-        <h3>Quality Control</h3>
-        <p>Bad Parts (Rebuturi)</p>
-        <button>Add Defect</button>
+        <h3>Quality</h3>
+        <button class="btn-qc">Reject Parts</button>
     </div>
 
     <div id="raw-material" class="footer-section">
-        <h3>Raw Material</h3>
-        <button>Scan</button>
-        <button>Print Remaining Label</button>
-        <button class="secondary">History</button>
+        <h3>Material</h3>
+        <button>Scan Batch</button>
     </div>
 
     <div id="labels" class="footer-section">
-        <h3>Container Labels</h3>
-        <button>Print at Current Qty</button>
-        <button class="secondary">Quick End & Print</button>
-        <button class="secondary">History</button>
+        <h3>Logistics</h3>
+        <button>Print Label</button>
     </div>
-
 </div>
 
 </body>

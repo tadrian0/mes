@@ -21,6 +21,13 @@ class OperatorLogsManager
             ");
             $closeStmt->execute([$operatorId]);
 
+            $countStmt = $this->pdo->prepare("SELECT COUNT(*) FROM $this->tableName WHERE MachineID = ? AND LogoutTime IS NULL");
+            $countStmt->execute([$machineId]);
+            if ($countStmt->fetchColumn() >= 6) {
+                $this->pdo->rollBack();
+                return false;
+            }
+
             $stmt = $this->pdo->prepare("
                 INSERT INTO $this->tableName (OperatorID, MachineID, LoginTime)
                 VALUES (?, ?, NOW())
@@ -32,6 +39,42 @@ class OperatorLogsManager
         } catch (PDOException $e) {
             $this->pdo->rollBack();
             return false;
+        }
+    }
+
+    public function logoutOperator(int $operatorId): bool
+    {
+        try {
+            $stmt = $this->pdo->prepare("
+                UPDATE $this->tableName 
+                SET LogoutTime = NOW() 
+                WHERE OperatorID = ? AND LogoutTime IS NULL
+            ");
+            return $stmt->execute([$operatorId]);
+        } catch (PDOException $e) {
+            return false;
+        }
+    }
+
+    public function getActiveOperators(int $machineId): array
+    {
+        try {
+            $stmt = $this->pdo->prepare("
+                SELECT 
+                    l.LogID,
+                    l.OperatorID,
+                    l.LoginTime,
+                    u.OperatorUsername,
+                    u.OperatorRoles
+                FROM $this->tableName l
+                JOIN user u ON l.OperatorID = u.OperatorID
+                WHERE l.MachineID = ? AND l.LogoutTime IS NULL
+                ORDER BY l.LoginTime ASC
+            ");
+            $stmt->execute([$machineId]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            return [];
         }
     }
 

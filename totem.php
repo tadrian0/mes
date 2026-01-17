@@ -5,7 +5,7 @@ require_once 'includes/MachineManager.php';
 
 session_start();
 
-$machineId = isset($_GET['machine_id']) ? (int)$_GET['machine_id'] : 0;
+$machineId = isset($_GET['machine_id']) ? (int) $_GET['machine_id'] : 0;
 $machineManager = new MachineManager($pdo);
 $machine = $machineManager->getMachineById($machineId);
 
@@ -17,7 +17,7 @@ if (!$machine) {
          </div>');
 }
 
-$statusClass = match($machine['Status']) {
+$statusClass = match ($machine['Status']) {
     'Active' => 'status-working',
     'Inactive' => 'status-stopped',
     'Maintenance' => 'status-maintenance',
@@ -26,109 +26,146 @@ $statusClass = match($machine['Status']) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <title><?= htmlspecialchars($machine['Name']) ?></title>
-    <link rel="stylesheet" href="totem.css"/>
+    <title>Totem - <?= htmlspecialchars($machine['Name']) ?></title>
+    <link rel="stylesheet" href="totem.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 
 <body>
 
-<div id="header">
-    <div class="auth-btn-wrapper">
-        <button id="btn-login">Login</button>
+    <?php include 'totem/header.php'; ?>
+
+    <div id="main">
+        <?php include 'totem/production_area.php'; ?>
+
+        <?php include 'totem/machine_panel.php'; ?>
     </div>
 
-    <div id="operators">
-        <div class="operator-slot empty">Op Slot 1</div>
-        <div class="operator-slot empty">Op Slot 2</div>
-        <div class="operator-slot empty">Op Slot 3</div>
-        <div class="operator-slot empty">Op Slot 4</div>
-        <div class="operator-slot empty">Op Slot 5</div>
-        <div class="operator-slot empty">Op Slot 6</div>
+    <div id="footer">
+        <?php include 'totem/footer_qc.php'; ?>
+        <?php include 'totem/footer_material.php'; ?>
+        <?php include 'totem/footer_logistics.php'; ?>
     </div>
 
-    <div id="header-right">
-        <button class="secondary" id="btn-logout">Logout</button>
-    </div>
-</div>
-
-<div id="main">
-    <div id="production-area">
-
-        <div class="panel">
-            <h3>Current Production</h3>
-            <p>Order No: <strong>PO-9999</strong></p>
-            <p>Part: <strong>Sample Component A</strong></p>
-            
-            <div class="progress-container">
-                <div class="progress-bar" style="width: 45%;">45%</div>
+    <div id="login-modal" class="modal-overlay" style="display:none;">
+        <div class="modal-box">
+            <h2>Operator Login</h2>
+            <input type="text" id="login-username" placeholder="Username / Badge ID" class="totem-input">
+            <input type="password" id="login-password" placeholder="Password" class="totem-input">
+            <div class="modal-actions">
+                <button id="btn-perform-login" class="large-btn">Login</button>
+                <button id="btn-cancel-login" class="large-btn secondary">Cancel</button>
             </div>
-            
-            <div style="margin-top:15px; display:flex; gap:10px;">
-                <button class="large-btn">Stop Production</button>
-                <button class="large-btn secondary">Suspend</button>
-            </div>
-        </div>
-
-    </div>
-
-    <div id="machine-panel">
-        <div class="panel h-100">
-            <h3>Machine Info</h3>
-            
-            <div class="machine-detail">
-                <span class="label">Name:</span>
-                <span class="value"><?= htmlspecialchars($machine['Name']) ?></span>
-            </div>
-
-            <div class="machine-detail">
-                <span class="label">Model:</span>
-                <span class="value"><?= htmlspecialchars($machine['Model']) ?></span>
-            </div>
-
-            <div class="machine-detail">
-                <span class="label">Loc:</span>
-                <span class="value"><?= htmlspecialchars($machine['Location']) ?></span>
-            </div>
-
-            <hr>
-
-            <div class="machine-detail">
-                <span class="label">Status:</span>
-                <span class="value <?= $statusClass ?>"><?= htmlspecialchars($machine['Status']) ?></span>
-            </div>
-
-            <div class="machine-detail">
-                <span class="label">Capacity:</span>
-                <span class="value"><?= htmlspecialchars($machine['Capacity']) ?> t/h</span>
-            </div>
-
-            <div class="mt-auto">
-                <button class="secondary w-100 mb-2">Declare Breakdown</button>
-                <button class="secondary w-100">Call Maintenance</button>
-            </div>
+            <p id="login-error" style="color:red; margin-top:10px;"></p>
         </div>
     </div>
 
-</div>
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script>
+        const MACHINE_ID = <?= $machineId ?>;
 
-<div id="footer">
-    <div id="qc" class="footer-section">
-        <h3>Quality</h3>
-        <button class="btn-qc">Reject Parts</button>
-    </div>
+        $(document).ready(function () {
+            // 1. Initial Load & Polling
+            fetchOperators();
+            setInterval(fetchOperators, 5000);
 
-    <div id="raw-material" class="footer-section">
-        <h3>Material</h3>
-        <button>Scan Batch</button>
-    </div>
+            // 2. Modal Logic
+            $('#btn-login-modal').click(function () {
+                $('#login-username').val('');
+                $('#login-password').val('');
+                $('#login-error').text('');
+                $('#login-modal').css('display', 'flex');
+            });
 
-    <div id="labels" class="footer-section">
-        <h3>Logistics</h3>
-        <button>Print Label</button>
-    </div>
-</div>
+            $('#btn-cancel-login').click(function () {
+                $('#login-modal').hide();
+            });
 
+            // 3. Perform Login
+            $('#btn-perform-login').click(function () {
+                const user = $('#login-username').val();
+                const pass = $('#login-password').val();
+
+                if (!user || !pass) {
+                    $('#login-error').text("Please enter credentials.");
+                    return;
+                }
+
+                $.post('api/totem-ajax.php', {
+                    action: 'login',
+                    machine_id: MACHINE_ID,
+                    username: user,
+                    password: pass
+                }, function (res) {
+                    if (res.status === 'success') {
+                        $('#login-modal').hide();
+                        fetchOperators();
+                    } else {
+                        $('#login-error').text(res.message);
+                    }
+                }, 'json');
+            });
+
+            // 4. Logout
+            $(document).on('click', '.btn-logout-op', function () {
+                const opId = $(this).data('id');
+                const opName = $(this).data('name');
+
+                if (confirm('Log out ' + opName + '?')) {
+                    $.post('api/totem-ajax.php', {
+                        action: 'logout',
+                        machine_id: MACHINE_ID,
+                        operator_id: opId
+                    }, function (res) {
+                        if (res.status === 'success') {
+                            fetchOperators();
+                        } else {
+                            alert(res.message);
+                        }
+                    }, 'json');
+                }
+            });
+        });
+
+        // Helpers
+        function fetchOperators() {
+            $.post('api/totem-ajax.php', {
+                action: 'fetch_operators',
+                machine_id: MACHINE_ID
+            }, function (res) {
+                if (res.status === 'success') {
+                    renderOperators(res.operators);
+                }
+            }, 'json');
+        }
+
+        function renderOperators(operators) {
+            $('.operator-slot').removeClass('active').addClass('empty').html('--');
+            operators.forEach((op, index) => {
+                if (index < 6) {
+                    const slot = $(`#slot-${index}`);
+                    slot.removeClass('empty').addClass('active');
+                    slot.html(`
+                        <div>
+                            <div class="op-name">${op.OperatorUsername}</div>
+                            <div class="op-time">${formatTime(op.LoginTime)}</div>
+                        </div>
+                        <button class="btn-logout-op" data-id="${op.OperatorID}" data-name="${op.OperatorUsername}">
+                            <i class="fa-solid fa-right-from-bracket"></i>
+                        </button>
+                    `);
+                }
+            });
+        }
+
+        function formatTime(sqlDate) {
+            const d = new Date(sqlDate);
+            return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+    </script>
 </body>
+
 </html>

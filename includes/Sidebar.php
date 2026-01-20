@@ -132,13 +132,13 @@ $menu = [];
 
 $menu[] = new SidebarLink('dashboard.php', 'Dashboard', 'fa-gauge-high');
 
-$menu[] = new SidebarHeader('Planning');
+//$menu[] = new SidebarHeader('Planning');
 $catPlanning = new SidebarCategory('planningMenu', 'ERP & Planning', 'fa-calendar-days');
 $catPlanning->addLink('pages/planning/production-orders.php', 'Production Orders', 'fa-file-invoice');
 $catPlanning->addLink('planning.php', 'Shift Scheduler', 'fa-clock');
 $menu[] = $catPlanning;
 
-$menu[] = new SidebarHeader('Execution');
+//$menu[] = new SidebarHeader('Execution');
 
 $catShop = new SidebarCategory('shopFloorMenu', 'Shop Floor', 'fa-person-digging');
 $catShop->addLink('pages/production/operator-logs.php', 'Operator Logs', 'fa-clipboard-user');
@@ -158,7 +158,7 @@ $menu[] = $catInv;
 
 $menu[] = new SidebarLink('data-analysis.php', 'Data Analysis', 'fa-chart-line');
 
-$menu[] = new SidebarHeader('Administration');
+//$menu[] = new SidebarHeader('Administration');
 
 $catAssets = new SidebarCategory('assetMenu', 'Factory Assets', 'fa-city');
 $catAssets->addLink('pages/database/plants.php', 'Plants', 'fa-industry');

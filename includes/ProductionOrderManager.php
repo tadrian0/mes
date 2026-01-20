@@ -9,59 +9,47 @@ class ProductionOrderManager
         $this->pdo = $pdo;
     }
 
-    /**
-     * Create a new Production Order
-     */
     public function createOrder(int $articleId, float $quantity, string $startDate, ?string $endDate = null, string $status = 'Planned'): bool
     {
         try {
             $stmt = $this->pdo->prepare("
-                INSERT INTO $this->tableName (ArticleID, Quantity, StartDate, EndDate, Status, IsDeleted)
-                VALUES (?, ?, ?, ?, ?, 0)
+                INSERT INTO {$this->tableName} 
+                (ArticleID, TargetQuantity, PlannedStartDate, PlannedEndDate, Status, IsDeleted, CreatedAt)
+                VALUES (?, ?, ?, ?, ?, 0, NOW())
             ");
-
-            // Format dates or handle nulls
+            
             $endDate = empty($endDate) ? null : $endDate;
-
+            
             return $stmt->execute([$articleId, $quantity, $startDate, $endDate, $status]);
         } catch (PDOException $e) {
-            // Log error here if needed
+            error_log($e->getMessage());
             return false;
         }
     }
 
-    /**
-     * Update an existing Order
-     */
     public function updateOrder(int $orderId, int $articleId, float $quantity, string $startDate, ?string $endDate, string $status): bool
     {
         try {
             $endDate = empty($endDate) ? null : $endDate;
-
+            
             $stmt = $this->pdo->prepare("
-                UPDATE $this->tableName 
-                SET ArticleID = ?, Quantity = ?, StartDate = ?, EndDate = ?, Status = ?
+                UPDATE {$this->tableName} 
+                SET ArticleID = ?, TargetQuantity = ?, PlannedStartDate = ?, PlannedEndDate = ?, Status = ?
                 WHERE OrderID = ?
             ");
+            
             return $stmt->execute([$articleId, $quantity, $startDate, $endDate, $status, $orderId]);
         } catch (PDOException $e) {
             return false;
         }
     }
 
-    /**
-     * Soft Delete: Marks as deleted but keeps data
-     * @param int $orderId The order to delete
-     * @param int $userId The ID of the admin/user performing the delete
-     */
     public function softDeleteOrder(int $orderId, int $userId): bool
     {
         try {
             $stmt = $this->pdo->prepare("
-                UPDATE $this->tableName 
-                SET IsDeleted = 1, 
-                    DeletedAt = NOW(), 
-                    DeletedBy = ?
+                UPDATE {$this->tableName} 
+                SET IsDeleted = 1, DeletedAt = NOW(), DeletedBy = ?
                 WHERE OrderID = ?
             ");
             return $stmt->execute([$userId, $orderId]);
@@ -70,65 +58,66 @@ class ProductionOrderManager
         }
     }
 
-    /**
-     * Restore a soft-deleted order (Optional utility)
-     */
-    public function restoreOrder(int $orderId): bool
+    public function getOrderById(int $orderId): ?array
     {
         try {
-            $stmt = $this->pdo->prepare("
-                UPDATE $this->tableName 
-                SET IsDeleted = 0, DeletedAt = NULL, DeletedBy = NULL
-                WHERE OrderID = ?
-            ");
-            return $stmt->execute([$orderId]);
+            $stmt = $this->pdo->prepare("SELECT * FROM {$this->tableName} WHERE OrderID = ?");
+            $stmt->execute([$orderId]);
+            return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
         } catch (PDOException $e) {
-            return false;
+            return null;
         }
     }
 
-    /**
-     * List orders with filtering
-     * @param bool $showDeleted If true, shows ONLY deleted items. If false (default), shows only active.
-     */
-    public function listOrders(bool $showDeleted = false, ?string $search = null): array
-    {
+    public function listOrders(
+        bool $showDeleted = false, 
+        ?string $search = null, 
+        ?int $filterArticle = null, 
+        ?string $filterStatus = null,
+        ?string $startDate = null,
+        ?string $endDate = null
+    ): array {
         try {
             $sql = "SELECT 
                         po.*, 
                         a.Name as ArticleName,
                         u.OperatorUsername as DeletedByUser
-                    FROM $this->tableName po
+                    FROM {$this->tableName} po
                     LEFT JOIN article a ON po.ArticleID = a.ArticleID
                     LEFT JOIN user u ON po.DeletedBy = u.OperatorID
                     WHERE po.IsDeleted = ?";
 
             $params = [$showDeleted ? 1 : 0];
 
-            if ($search) {
+            if (!empty($search)) {
                 $sql .= " AND (po.OrderID LIKE ? OR a.Name LIKE ?)";
                 $params[] = "%$search%";
                 $params[] = "%$search%";
             }
+            if (!empty($filterArticle)) {
+                $sql .= " AND po.ArticleID = ?";
+                $params[] = $filterArticle;
+            }
+            if (!empty($filterStatus)) {
+                $sql .= " AND po.Status = ?";
+                $params[] = $filterStatus;
+            }
+            if (!empty($startDate)) {
+                $sql .= " AND po.PlannedStartDate >= ?";
+                $params[] = $startDate . " 00:00:00";
+            }
+            if (!empty($endDate)) {
+                $sql .= " AND po.PlannedStartDate <= ?";
+                $params[] = $endDate . " 23:59:59";
+            }
 
-            $sql .= " ORDER BY po.StartDate DESC";
+            $sql .= " ORDER BY po.PlannedStartDate DESC";
 
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute($params);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             return [];
-        }
-    }
-
-    public function getOrderById(int $orderId): ?array
-    {
-        try {
-            $stmt = $this->pdo->prepare("SELECT * FROM $this->tableName WHERE OrderID = ?");
-            $stmt->execute([$orderId]);
-            return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
-        } catch (PDOException $e) {
-            return null;
         }
     }
 }

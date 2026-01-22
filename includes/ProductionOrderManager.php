@@ -69,6 +69,68 @@ class ProductionOrderManager
         }
     }
 
+/**
+     * Get the currently running order for a specific machine
+     */
+    public function getActiveOrderForMachine(int $machineId): ?array
+    {
+        // We look for an order that is 'Active' AND has an active log on this machine
+        // Or simply the order assigned to this machine marked as Active
+        $sql = "SELECT 
+                    po.*,
+                    a.Name as ArticleName,
+                    a.Description as ArticleDesc,
+                    (SELECT COUNT(*) FROM production_log pl WHERE pl.ProductionOrderID = po.OrderID AND pl.Status = 'Active') as IsRunning
+                FROM {$this->tableName} po
+                LEFT JOIN article a ON po.ArticleID = a.ArticleID
+                WHERE po.MachineID = ? AND po.Status = 'Active'
+                LIMIT 1";
+        
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([$machineId]);
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
+
+    /**
+     * Get list of planned orders ready to start
+     */
+    public function getPlannedOrders(int $machineId): array
+    {
+        // Fetches orders status 'Planned' assigned to this machine OR unassigned (MachineID is NULL)
+        $sql = "SELECT 
+                    po.*,
+                    a.Name as ArticleName
+                FROM {$this->tableName} po
+                LEFT JOIN article a ON po.ArticleID = a.ArticleID
+                WHERE po.Status = 'Planned' 
+                AND (po.MachineID = ? OR po.MachineID IS NULL)
+                AND po.IsDeleted = 0
+                ORDER BY po.PlannedStartDate ASC";
+        
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([$machineId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Set order to active and assign machine if null
+     */
+    public function startOrder(int $orderId, int $machineId): bool
+    {
+        try {
+            $stmt = $this->pdo->prepare("
+                UPDATE {$this->tableName} 
+                SET Status = 'Active', 
+                    ActualStartDate = NOW(),
+                    MachineID = ? 
+                WHERE OrderID = ?
+            ");
+            return $stmt->execute([$machineId, $orderId]);
+        } catch (PDOException $e) {
+            return false;
+        }
+    }
+
     public function listOrders(
         bool $showDeleted = false, 
         ?string $search = null, 

@@ -195,5 +195,34 @@ class ProductionOrderManager
             return false;
         }
     }
+
+    public function finishOrder(int $orderId): bool
+    {
+        try {
+            $stmt = $this->pdo->prepare("
+                UPDATE {$this->tableName}
+                SET Status = 'Completed',
+                    ActualEndDate = NOW()
+                WHERE OrderID = ?
+            ");
+            return $stmt->execute([$orderId]);
+        } catch (PDOException $e) {
+            return false;
+        }
+    }
+
+    public function suspendOrder(int $orderId): bool
+    {
+        try {
+            $stmt = $this->pdo->prepare("
+                UPDATE {$this->tableName}
+                SET Status = 'Suspended'
+                WHERE OrderID = ?
+            ");
+            return $stmt->execute([$orderId]);
+        } catch (PDOException $e) {
+            return false;
+        }
+    }
 }
 ?>

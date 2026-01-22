@@ -16,6 +16,12 @@
             
             <div style="font-size:1.2rem; margin-bottom:10px;">
                 <strong>Order #<?= $activeOrder['OrderID'] ?></strong> - <?= htmlspecialchars($activeOrder['ArticleName']) ?>
+                <?php if (!empty($activeOrder['ArticleDesc'])): ?>
+                    <br><small class="text-muted"><?= htmlspecialchars($activeOrder['ArticleDesc']) ?></small>
+                <?php endif; ?>
+                <?php if (!empty($activeOrder['CycleTime'])): ?>
+                    <span class="badge bg-secondary ms-2">Cycle: <?= htmlspecialchars($activeOrder['CycleTime']) ?>s</span>
+                <?php endif; ?>
             </div>
             
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:20px;">
@@ -34,8 +40,8 @@
             </div>
             
             <div style="margin-top:auto; display:flex; gap:10px;">
-                <button class="large-btn secondary" style="background:#dc2626;">Stop / Finish Order</button>
-                <button class="large-btn secondary" style="background:#f59e0b;">Suspend Run</button>
+                <button class="large-btn secondary btn-stop-order" data-id="<?= $activeOrder['OrderID'] ?>" style="background:#dc2626;">Stop / Finish Order</button>
+                <button class="large-btn secondary btn-suspend-order" data-id="<?= $activeOrder['OrderID'] ?>" style="background:#f59e0b;">Suspend Run</button>
             </div>
         </div>
 

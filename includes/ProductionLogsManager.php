@@ -75,6 +75,21 @@ class ProductionLogsManager
         }
     }
 
+    public function getActiveLog(int $orderId): ?array
+    {
+        try {
+            $stmt = $this->pdo->prepare("
+                SELECT * FROM {$this->tableName}
+                WHERE ProductionOrderID = ? AND Status = 'Active'
+                ORDER BY StartTime DESC LIMIT 1
+            ");
+            $stmt->execute([$orderId]);
+            return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        } catch (PDOException $e) {
+            return null;
+        }
+    }
+
     public function listLogs(?int $filterMachine = null, ?int $filterOperator = null, ?int $filterOrder = null, ?string $startDate = null, ?string $endDate = null): array
     {
         try {

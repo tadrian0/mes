@@ -326,6 +326,44 @@ $statusClass = match($machine['Status']) {
                 }
             });
 
+            // 6. STOP PRODUCTION
+            $(document).on('click', '.btn-stop-order', function() {
+                let orderId = $(this).data('id');
+
+                if(confirm("Are you sure you want to STOP/FINISH this order?")) {
+                    $.post('api/totem-ajax.php', {
+                        action: 'stop_order',
+                        machine_id: MACHINE_ID,
+                        order_id: orderId
+                    }, function(res) {
+                        if(res.status === 'success') {
+                            location.reload();
+                        } else {
+                            alert(res.message);
+                        }
+                    }, 'json');
+                }
+            });
+
+            // 7. SUSPEND PRODUCTION
+            $(document).on('click', '.btn-suspend-order', function() {
+                let orderId = $(this).data('id');
+
+                if(confirm("Are you sure you want to SUSPEND this order?")) {
+                    $.post('api/totem-ajax.php', {
+                        action: 'suspend_order',
+                        machine_id: MACHINE_ID,
+                        order_id: orderId
+                    }, function(res) {
+                        if(res.status === 'success') {
+                            location.reload();
+                        } else {
+                            alert(res.message);
+                        }
+                    }, 'json');
+                }
+            });
+
             // 5. START PRODUCTION (New Logic)
             $(document).on('click', '.btn-start-order', function() {
                 let orderId = $(this).data('id');

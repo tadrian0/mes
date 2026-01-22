@@ -2,72 +2,37 @@
 class RecipeManager
 {
     private $pdo;
-    private $tableName = "production_recipe";
+    private $tableName = "production_recipes";
 
     public function __construct(PDO $pdo)
     {
         $this->pdo = $pdo;
     }
 
-    public function createRecipe(int $sequence = 0, ?string $operationDescription = null, ?float $estimatedTime = null, ?string $machineType = null): bool
+    public function createRecipe(int $articleId, int $machineId, string $version, float $estimatedTime, string $opDesc, int $isActive = 1, ?string $notes = null): bool
     {
         try {
+            // Optional: If setting as Active, you might want to set others of this Article to Inactive (logic depends on requirements)
+            
             $stmt = $this->pdo->prepare("
-                INSERT INTO $this->tableName (Sequence, OperationDescription, EstimatedTime, MachineType)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO $this->tableName (ArticleID, MachineID, Version, EstimatedTime, OperationDescription, IsActive, Notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
             ");
-            return $stmt->execute([$sequence, $operationDescription, $estimatedTime, $machineType]);
+            return $stmt->execute([$articleId, $machineId, $version, $estimatedTime, $opDesc, $isActive, $notes]);
         } catch (PDOException $e) {
             return false;
         }
     }
 
-    public function getRecipeById(int $recipeId): ?array
+    public function updateRecipe(int $recipeId, int $articleId, int $machineId, string $version, float $estimatedTime, string $opDesc, int $isActive, ?string $notes): bool
     {
         try {
             $stmt = $this->pdo->prepare("
-                SELECT RecipeID, Sequence, OperationDescription, EstimatedTime, MachineType, CreatedAt, UpdatedAt
-                FROM $this->tableName
-                WHERE RecipeID = ?
+                UPDATE $this->tableName 
+                SET ArticleID=?, MachineID=?, Version=?, EstimatedTime=?, OperationDescription=?, IsActive=?, Notes=?
+                WHERE RecipeID=?
             ");
-            $stmt->execute([$recipeId]);
-            return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
-        } catch (PDOException $e) {
-            return null;
-        }
-    }
-
-    public function updateRecipe(int $recipeId, ?int $sequence = null, ?string $operationDescription = null, ?float $estimatedTime = null, ?string $machineType = null): bool
-    {
-        $updates = [];
-        $params = [];
-        if ($sequence !== null) {
-            $updates[] = 'Sequence = ?';
-            $params[] = $sequence;
-        }
-        if ($operationDescription !== null) {
-            $updates[] = 'OperationDescription = ?';
-            $params[] = $operationDescription;
-        }
-        if ($estimatedTime !== null) {
-            $updates[] = 'EstimatedTime = ?';
-            $params[] = $estimatedTime;
-        }
-        if ($machineType !== null) {
-            $updates[] = 'MachineType = ?';
-            $params[] = $machineType;
-        }
-        if (empty($updates)) {
-            return false;
-        }
-        $params[] = $recipeId;
-        try {
-            $stmt = $this->pdo->prepare("
-                UPDATE $this->tableName
-                SET " . implode(', ', $updates) . "
-                WHERE RecipeID = ?
-            ");
-            return $stmt->execute($params);
+            return $stmt->execute([$articleId, $machineId, $version, $estimatedTime, $opDesc, $isActive, $notes, $recipeId]);
         } catch (PDOException $e) {
             return false;
         }
@@ -83,20 +48,63 @@ class RecipeManager
         }
     }
 
-    public function listRecipes(): array
+    public function getRecipeById(int $id): ?array
     {
         try {
-            $stmt = $this->pdo->query("
-                SELECT RecipeID, Sequence, OperationDescription, EstimatedTime, MachineType, CreatedAt, UpdatedAt
-                FROM $this->tableName
-                ORDER BY Sequence ASC
-            ");
+            $stmt = $this->pdo->prepare("SELECT * FROM $this->tableName WHERE RecipeID = ?");
+            $stmt->execute([$id]);
+            return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        } catch (PDOException $e) {
+            return null;
+        }
+    }
+
+    /**
+     * List recipes with filters and joins
+     */
+    public function listRecipes(?int $filterArticle = null, ?int $filterMachine = null, ?string $search = null): array
+    {
+        try {
+            $sql = "SELECT 
+                        r.*,
+                        a.Name AS ArticleName,
+                        a.ArticleID,
+                        m.Name AS MachineName,
+                        m.Location AS MachineLoc
+                    FROM $this->tableName r
+                    JOIN article a ON r.ArticleID = a.ArticleID
+                    JOIN machine m ON r.MachineID = m.MachineID
+                    WHERE 1=1";
+
+            $params = [];
+
+            if (!empty($filterArticle)) {
+                $sql .= " AND r.ArticleID = ?";
+                $params[] = $filterArticle;
+            }
+            if (!empty($filterMachine)) {
+                $sql .= " AND r.MachineID = ?";
+                $params[] = $filterMachine;
+            }
+            if (!empty($search)) {
+                $sql .= " AND (r.Version LIKE ? OR r.OperationDescription LIKE ? OR a.Name LIKE ?)";
+                $params[] = "%$search%";
+                $params[] = "%$search%";
+                $params[] = "%$search%";
+            }
+
+            // Order by Article Name then Active status (Active first) then Version
+            $sql .= " ORDER BY a.Name ASC, r.IsActive DESC, r.Version ASC";
+
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($params);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             return [];
         }
     }
 }
+
 
 class RecipeInputManager
 {

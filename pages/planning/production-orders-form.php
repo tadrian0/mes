@@ -11,45 +11,49 @@ if (!$isAdmin) { header('Location: production-orders.php'); exit; }
 $orderManager = new ProductionOrderManager($pdo);
 $articleManager = new ArticleManager($pdo);
 
-// Initialize Variables
 $orderId = isset($_GET['id']) ? (int)$_GET['id'] : null;
 $isEdit = !empty($orderId);
 $order = $isEdit ? $orderManager->getOrderById($orderId) : null;
 $articles = $articleManager->listArticles();
 
-// Error Handling: Invalid ID
+$recipesStmt = $pdo->query("
+    SELECT r.RecipeID, r.ArticleID, r.Version, r.EstimatedTime, m.Name AS MachineName 
+    FROM production_recipes r 
+    JOIN machine m ON r.MachineID = m.MachineID 
+    WHERE r.IsActive = 1
+");
+$allRecipes = $recipesStmt->fetchAll(PDO::FETCH_ASSOC);
+
 if ($isEdit && !$order) {
-    die('<div class="container mt-5"><div class="alert alert-danger">Order not found. <a href="production-orders.php">Go back</a></div></div>');
+    die('<div class="container mt-5"><div class="alert alert-danger">Order not found.</div></div>');
 }
 
 $error = '';
 
-// --- HANDLE SUBMISSION ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $articleId = (int)$_POST['article_id'];
-    $quantity = (float)$_POST['quantity'];
+    $recipeId  = !empty($_POST['recipe_id']) ? (int)$_POST['recipe_id'] : null;
+    $quantity  = (float)$_POST['quantity'];
     $startDate = $_POST['start_date'];
-    $endDate = !empty($_POST['end_date']) ? $_POST['end_date'] : null;
-    $status = $isEdit ? $_POST['status'] : 'Planned';
+    $endDate   = !empty($_POST['end_date']) ? $_POST['end_date'] : null; 
+    $status    = $isEdit ? ($_POST['status'] ?? 'Planned') : 'Planned';
 
     if ($quantity <= 0) {
         $error = "Error: Target Quantity must be greater than 0.";
-    } 
-    elseif ($endDate && strtotime($endDate) < strtotime($startDate)) {
+    } elseif ($endDate && strtotime($endDate) < strtotime($startDate)) {
         $error = "Error: Due Date cannot be earlier than the Start Date.";
-    } 
-    else {
+    } else {
         if ($isEdit) {
-            if ($orderManager->updateOrder($orderId, $articleId, $quantity, $startDate, $endDate, $status)) {
+            if ($orderManager->updateOrder($orderId, $articleId, $recipeId, $quantity, $startDate, $endDate, $status)) {
                 header("Location: production-orders.php?msg=updated"); exit;
             } else {
-                $error = "Database Error: Failed to update order.";
+                $error = "Failed to update order.";
             }
         } else {
-            if ($orderManager->createOrder($articleId, $quantity, $startDate, $endDate, $status)) {
+            if ($orderManager->createOrder($articleId, $recipeId, $quantity, $startDate, $endDate, $status)) {
                 header("Location: production-orders.php?msg=created"); exit;
             } else {
-                $error = "Database Error: Failed to create order.";
+                $error = "Failed to create order.";
             }
         }
     }
@@ -81,20 +85,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="card-body">
                     
                     <?php if ($error): ?>
-                        <div class="alert alert-danger d-flex align-items-center"><i class="fa-solid fa-triangle-exclamation me-2"></i> <?= htmlspecialchars($error) ?></div>
+                        <div class="alert alert-danger"><i class="fa-solid fa-triangle-exclamation me-2"></i> <?= htmlspecialchars($error) ?></div>
                     <?php endif; ?>
 
                     <form method="post" action="">
                         
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Article / Product <span class="text-danger">*</span></label>
-                            <select name="article_id" class="form-select" required>
-                                <option value="">Select Article...</option>
-                                <?php foreach ($articles as $art): ?>
-                                    <?php $selected = ($isEdit && $order['ArticleID'] == $art['ArticleID']) ? 'selected' : ''; ?>
-                                    <option value="<?= $art['ArticleID'] ?>" <?= $selected ?>><?= htmlspecialchars($art['Name']) ?></option>
-                                <?php endforeach; ?>
-                            </select>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Article / Product <span class="text-danger">*</span></label>
+                                <select name="article_id" id="article_select" class="form-select" required>
+                                    <option value="">Select Article...</option>
+                                    <?php foreach ($articles as $art): ?>
+                                        <?php $selected = ($isEdit && $order['ArticleID'] == $art['ArticleID']) ? 'selected' : ''; ?>
+                                        <option value="<?= $art['ArticleID'] ?>" <?= $selected ?>>
+                                            <?= htmlspecialchars($art['Name']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Recipe Version (Routing) <span class="text-danger">*</span></label>
+                                <select name="recipe_id" id="recipe_select" class="form-select" required>
+                                    <option value="">Select Article First</option>
+                                    </select>
+                                <div class="form-text text-muted" id="machine_hint">Select a version to see target machine.</div>
+                            </div>
                         </div>
 
                         <div class="row mb-3">
@@ -104,20 +120,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                        value="<?= $isEdit ? $order['TargetQuantity'] : '' ?>">
                             </div>
                             
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold">Status</label>
-                                <?php if ($isEdit): ?>
+                            <?php if ($isEdit): ?>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Status</label>
                                     <select name="status" class="form-select" required>
                                         <?php foreach (['Planned', 'Active', 'Closed', 'Cancelled'] as $s): ?>
                                             <option value="<?= $s ?>" <?= ($order['Status'] == $s) ? 'selected' : '' ?>><?= $s ?></option>
                                         <?php endforeach; ?>
                                     </select>
-                                <?php else: ?>
-                                    <input type="text" class="form-control bg-light" value="Planned" disabled>
-                                    <input type="hidden" name="status" value="Planned">
-                                    <div class="form-text">New orders start as <strong>Planned</strong>.</div>
-                                <?php endif; ?>
-                            </div>
+                                </div>
+                            <?php else: ?>
+                                <div class="col-md-6 pt-4">
+                                    <span class="badge bg-primary fs-6">Status: Planned</span>
+                                </div>
+                            <?php endif; ?>
                         </div>
 
                         <div class="row mb-4">
@@ -127,8 +143,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                        value="<?= $isEdit ? date('Y-m-d\TH:i', strtotime($order['PlannedStartDate'])) : date('Y-m-d\T08:00') ?>">
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label fw-bold">Due Date (Optional)</label>
-                                <input type="datetime-local" name="end_date" class="form-control"
+                                <label class="form-label fw-bold">Due Date (Auto-calculated if empty)</label>
+                                <input type="datetime-local" name="end_date" class="form-control" placeholder="Leave empty to auto-calculate"
                                        value="<?= ($isEdit && $order['PlannedEndDate']) ? date('Y-m-d\TH:i', strtotime($order['PlannedEndDate'])) : '' ?>">
                             </div>
                         </div>
@@ -143,6 +159,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         </div>
     </div>
+
+    <script>
+        const allRecipes = <?= json_encode($allRecipes) ?>;
+        const selectedRecipeId = <?= $isEdit && $order['RecipeID'] ? $order['RecipeID'] : 'null' ?>;
+
+        const articleSelect = document.getElementById('article_select');
+        const recipeSelect = document.getElementById('recipe_select');
+        const machineHint = document.getElementById('machine_hint');
+
+        function updateRecipes() {
+            const articleId = parseInt(articleSelect.value);
+            recipeSelect.innerHTML = '<option value="">Select Version...</option>';
+            machineHint.textContent = "Select a version to see target machine.";
+
+            if (!articleId) return;
+
+            const relevantRecipes = allRecipes.filter(r => r.ArticleID == articleId);
+
+            if (relevantRecipes.length === 0) {
+                recipeSelect.innerHTML = '<option value="">No active recipes found for this article</option>';
+            } else {
+                relevantRecipes.forEach(r => {
+                    const opt = document.createElement('option');
+                    opt.value = r.RecipeID;
+                    opt.text = `${r.Version} (Machine: ${r.MachineName}, Time: ${r.EstimatedTime}s)`;
+                    if (r.RecipeID == selectedRecipeId) opt.selected = true;
+                    recipeSelect.appendChild(opt);
+                });
+            }
+        }
+
+        articleSelect.addEventListener('change', updateRecipes);
+        
+        if (articleSelect.value) {
+            updateRecipes();
+        }
+    </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>

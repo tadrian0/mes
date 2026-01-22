@@ -9,36 +9,59 @@ class ProductionOrderManager
         $this->pdo = $pdo;
     }
 
-    public function createOrder(int $articleId, float $quantity, string $startDate, ?string $endDate = null, string $status = 'Planned'): bool
+    private function calculateEndDate($recipeId, $quantity, $startDate) {
+        if (!$recipeId || !$quantity || !$startDate) return null;
+
+        $stmt = $this->pdo->prepare("SELECT EstimatedTime FROM production_recipes WHERE RecipeID = ?");
+        $stmt->execute([$recipeId]);
+        $cycleTime = $stmt->fetchColumn(); 
+
+        if ($cycleTime) {
+            $totalSeconds = $cycleTime * $quantity;
+            $start = new DateTime($startDate);
+            $start->modify("+{$totalSeconds} seconds");
+            return $start->format('Y-m-d H:i:s');
+        }
+        return null;
+    }
+
+    public function createOrder(int $articleId, ?int $recipeId, float $quantity, string $startDate, ?string $endDate = null, string $status = 'Planned'): bool
     {
         try {
+            if (empty($endDate) && $recipeId) {
+                $endDate = $this->calculateEndDate($recipeId, $quantity, $startDate);
+            }
+
             $stmt = $this->pdo->prepare("
                 INSERT INTO {$this->tableName} 
-                (ArticleID, TargetQuantity, PlannedStartDate, PlannedEndDate, Status, IsDeleted, CreatedAt)
-                VALUES (?, ?, ?, ?, ?, 0, NOW())
+                (ArticleID, RecipeID, TargetQuantity, PlannedStartDate, PlannedEndDate, Status, IsDeleted, CreatedAt)
+                VALUES (?, ?, ?, ?, ?, ?, 0, NOW())
             ");
             
             $endDate = empty($endDate) ? null : $endDate;
             
-            return $stmt->execute([$articleId, $quantity, $startDate, $endDate, $status]);
+            return $stmt->execute([$articleId, $recipeId, $quantity, $startDate, $endDate, $status]);
         } catch (PDOException $e) {
-            error_log($e->getMessage());
             return false;
         }
     }
 
-    public function updateOrder(int $orderId, int $articleId, float $quantity, string $startDate, ?string $endDate, string $status): bool
+    public function updateOrder(int $orderId, int $articleId, ?int $recipeId, float $quantity, string $startDate, ?string $endDate, string $status): bool
     {
         try {
-            $endDate = empty($endDate) ? null : $endDate;
+            if (empty($endDate) && $recipeId) {
+                $endDate = $this->calculateEndDate($recipeId, $quantity, $startDate);
+            } else {
+                $endDate = empty($endDate) ? null : $endDate;
+            }
             
             $stmt = $this->pdo->prepare("
                 UPDATE {$this->tableName} 
-                SET ArticleID = ?, TargetQuantity = ?, PlannedStartDate = ?, PlannedEndDate = ?, Status = ?
+                SET ArticleID = ?, RecipeID = ?, TargetQuantity = ?, PlannedStartDate = ?, PlannedEndDate = ?, Status = ?
                 WHERE OrderID = ?
             ");
             
-            return $stmt->execute([$articleId, $quantity, $startDate, $endDate, $status, $orderId]);
+            return $stmt->execute([$articleId, $recipeId, $quantity, $startDate, $endDate, $status, $orderId]);
         } catch (PDOException $e) {
             return false;
         }
@@ -69,84 +92,20 @@ class ProductionOrderManager
         }
     }
 
-/**
-     * Get the currently running order for a specific machine
-     */
-    public function getActiveOrderForMachine(int $machineId): ?array
+    public function listOrders(bool $showDeleted = false, ?string $search = null, ?int $filterArticle = null, ?string $filterStatus = null, ?string $startDate = null, ?string $endDate = null): array
     {
-        // We look for an order that is 'Active' AND has an active log on this machine
-        // Or simply the order assigned to this machine marked as Active
-        $sql = "SELECT 
-                    po.*,
-                    a.Name as ArticleName,
-                    a.Description as ArticleDesc,
-                    (SELECT COUNT(*) FROM production_log pl WHERE pl.ProductionOrderID = po.OrderID AND pl.Status = 'Active') as IsRunning
-                FROM {$this->tableName} po
-                LEFT JOIN article a ON po.ArticleID = a.ArticleID
-                WHERE po.MachineID = ? AND po.Status = 'Active'
-                LIMIT 1";
-        
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([$machineId]);
-        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
-    }
-
-    /**
-     * Get list of planned orders ready to start
-     */
-    public function getPlannedOrders(int $machineId): array
-    {
-        // Fetches orders status 'Planned' assigned to this machine OR unassigned (MachineID is NULL)
-        $sql = "SELECT 
-                    po.*,
-                    a.Name as ArticleName
-                FROM {$this->tableName} po
-                LEFT JOIN article a ON po.ArticleID = a.ArticleID
-                WHERE po.Status = 'Planned' 
-                AND (po.MachineID = ? OR po.MachineID IS NULL)
-                AND po.IsDeleted = 0
-                ORDER BY po.PlannedStartDate ASC";
-        
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([$machineId]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-
-    /**
-     * Set order to active and assign machine if null
-     */
-    public function startOrder(int $orderId, int $machineId): bool
-    {
-        try {
-            $stmt = $this->pdo->prepare("
-                UPDATE {$this->tableName} 
-                SET Status = 'Active', 
-                    ActualStartDate = NOW(),
-                    MachineID = ? 
-                WHERE OrderID = ?
-            ");
-            return $stmt->execute([$machineId, $orderId]);
-        } catch (PDOException $e) {
-            return false;
-        }
-    }
-
-    public function listOrders(
-        bool $showDeleted = false, 
-        ?string $search = null, 
-        ?int $filterArticle = null, 
-        ?string $filterStatus = null,
-        ?string $startDate = null,
-        ?string $endDate = null
-    ): array {
         try {
             $sql = "SELECT 
                         po.*, 
                         a.Name as ArticleName,
-                        u.OperatorUsername as DeletedByUser
+                        u.OperatorUsername as DeletedByUser,
+                        pr.Version as RecipeVersion,
+                        m.Name as TargetMachine
                     FROM {$this->tableName} po
                     LEFT JOIN article a ON po.ArticleID = a.ArticleID
                     LEFT JOIN user u ON po.DeletedBy = u.OperatorID
+                    LEFT JOIN production_recipes pr ON po.RecipeID = pr.RecipeID
+                    LEFT JOIN machine m ON pr.MachineID = m.MachineID
                     WHERE po.IsDeleted = ?";
 
             $params = [$showDeleted ? 1 : 0];
@@ -180,6 +139,60 @@ class ProductionOrderManager
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             return [];
+        }
+    }
+
+    public function getActiveOrderForMachine(int $machineId): ?array
+    {
+        $sql = "SELECT 
+                    po.*,
+                    a.Name as ArticleName,
+                    a.Description as ArticleDesc,
+                    pr.EstimatedTime as CycleTime
+                FROM {$this->tableName} po
+                LEFT JOIN article a ON po.ArticleID = a.ArticleID
+                LEFT JOIN production_recipes pr ON po.RecipeID = pr.RecipeID
+                WHERE po.Status = 'Active' 
+                AND pr.MachineID = ?
+                LIMIT 1";
+        
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([$machineId]);
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
+
+    public function getPlannedOrders(int $machineId): array
+    {
+        $sql = "SELECT 
+                    po.*,
+                    a.Name as ArticleName,
+                    pr.Version,
+                    pr.EstimatedTime
+                FROM {$this->tableName} po
+                LEFT JOIN article a ON po.ArticleID = a.ArticleID
+                LEFT JOIN production_recipes pr ON po.RecipeID = pr.RecipeID
+                WHERE po.Status = 'Planned' 
+                AND po.IsDeleted = 0
+                AND pr.MachineID = ?
+                ORDER BY po.PlannedStartDate ASC";
+        
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([$machineId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function startOrder(int $orderId): bool
+    {
+        try {
+            $stmt = $this->pdo->prepare("
+                UPDATE {$this->tableName} 
+                SET Status = 'Active', 
+                    ActualStartDate = NOW()
+                WHERE OrderID = ?
+            ");
+            return $stmt->execute([$orderId]);
+        } catch (PDOException $e) {
+            return false;
         }
     }
 }

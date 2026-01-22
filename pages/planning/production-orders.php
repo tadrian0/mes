@@ -104,10 +104,10 @@ if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete'])
                         <tr>
                             <th>Order #</th>
                             <th>Article</th>
-                            <th>Status</th>
                             <th>Target Qty</th>
+                            <th>Routing (Machine)</th>
+                            <th>Status</th>
                             <th>Start Date</th>
-                            <th>Due Date</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -119,6 +119,17 @@ if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete'])
                                 <tr class="<?= $po['IsDeleted'] ? 'table-danger' : '' ?>">
                                     <td><strong><?= $po['OrderID'] ?></strong></td>
                                     <td><?= htmlspecialchars($po['ArticleName'] ?? 'Unknown') ?></td>
+                                    <td><?= number_format($po['TargetQuantity'], 0) ?></td>
+                                    <td>
+                                        <?php if ($po['RecipeVersion']): ?>
+                                            <span class="badge bg-info text-dark"><?= htmlspecialchars($po['RecipeVersion']) ?></span>
+                                            <div class="small text-muted">
+                                                <i class="fa-solid fa-microchip"></i> <?= htmlspecialchars($po['TargetMachine'] ?? 'Unassigned') ?>
+                                            </div>
+                                        <?php else: ?>
+                                            <span class="text-muted fst-italic">No Recipe</span>
+                                        <?php endif; ?>
+                                    </td>
                                     <td>
                                         <?php 
                                         $badge = match($po['Status']) {
@@ -127,9 +138,7 @@ if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete'])
                                         ?>
                                         <span class="badge text-bg-<?= $badge ?>"><?= $po['Status'] ?></span>
                                     </td>
-                                    <td><?= number_format($po['TargetQuantity'], 0) ?></td>
                                     <td><?= date('d M Y', strtotime($po['PlannedStartDate'])) ?></td>
-                                    <td><?= $po['PlannedEndDate'] ? date('d M Y', strtotime($po['PlannedEndDate'])) : '-' ?></td>
                                     <td>
                                         <?php if ($po['IsDeleted']): ?>
                                             <small class="text-danger">Deleted by <?= htmlspecialchars($po['DeletedByUser']) ?></small>

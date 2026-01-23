@@ -179,6 +179,7 @@ $catSys->addLink('pages/database/reject-categories.php', 'Reject Categories', 'f
 $catSys->addLink('pages/database/reject-reasons.php', 'Reject Reasons', 'fa-list-check');
 $catSys->addLink('pages/security/api-management.php', 'API Keys', 'fa-key');
 $catSys->addLink('pages/security/api-usage-audits.php', 'Audit Logs', 'fa-file-shield');
+$catSys->addLink('pages/system/wago-logs.php', 'WAGO Simulator', 'fa-server');
 $menu[] = $catSys;
 
 $logoutLink = new SidebarLink('logout.php', 'Log Out', 'fa-right-from-bracket');

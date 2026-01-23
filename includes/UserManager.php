@@ -9,105 +9,106 @@ class UserManager
         $this->pdo = $pdo;
     }
 
-    public function createUser(string $username, string $password, string $roles = 'operator'): bool
+    /**
+     * Create a new user
+     */
+    public function createUser(string $username, string $password, string $role): bool
     {
-        if (empty($username) || empty($password)) {
-            return false;
-        }
         try {
+            $check = $this->pdo->prepare("SELECT COUNT(*) FROM $this->tableName WHERE OperatorUsername = ?");
+            $check->execute([$username]);
+            if ($check->fetchColumn() > 0) {
+                return false; 
+            }
+
             $stmt = $this->pdo->prepare("
-                INSERT INTO $this->tableName (OperatorUsername, OperatorPassword, OperatorRoles)
+                INSERT INTO $this->tableName (OperatorUsername, OperatorPassword, OperatorRoles) 
                 VALUES (?, ?, ?)
             ");
-            return $stmt->execute([$username, $password, $roles]);
+            
+            return $stmt->execute([$username, $password, $role]);
         } catch (PDOException $e) {
             return false;
         }
     }
 
-    public function getUserById(int $userId): ?array
+    /**
+     * Update existing user
+     */
+    public function updateUser(int $id, string $username, ?string $password, string $role): bool
     {
         try {
-            $stmt = $this->pdo->prepare("
-                SELECT OperatorID, OperatorUsername, OperatorRoles, CreatedAt, UpdatedAt
-                FROM $this->tableName
-                WHERE OperatorID = ?
-            ");
-            $stmt->execute([$userId]);
-            return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
-        } catch (PDOException $e) {
-            return null;
-        }
-    }
-
-    public function getUserByUsername(string $username): ?array
-    {
-        try {
-            $stmt = $this->pdo->prepare("
-                SELECT OperatorID, OperatorUsername, OperatorRoles, CreatedAt, UpdatedAt
-                FROM $this->tableName
-                WHERE OperatorUsername = ?
-            ");
-            $stmt->execute([$username]);
-            return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
-        } catch (PDOException $e) {
-            return null;
-        }
-    }
-
-    public function updateUser(int $userId, ?string $username = null, ?string $password = null, ?string $roles = null): bool
-    {
-        $updates = [];
-        $params = [];
-        if ($username !== null && $username !== '') {
-            $updates[] = 'OperatorUsername = ?';
-            $params[] = $username;
-        }
-        if ($password !== null && $password !== '') {
-            $updates[] = 'OperatorPassword = ?';
-            $params[] = $password;
-        }
-        if ($roles !== null && $roles !== '') {
-            $updates[] = 'OperatorRoles = ?';
-            $params[] = $roles;
-        }
-        if (empty($updates)) {
-            return false;
-        }
-        $params[] = $userId;
-        try {
-            $stmt = $this->pdo->prepare("
-                UPDATE $this->tableName
-                SET ' . implode(', ', $updates) . '
-                WHERE OperatorID = ?
-            ");
-            return $stmt->execute($params);
+            if ($password) {
+                $stmt = $this->pdo->prepare("
+                    UPDATE $this->tableName 
+                    SET OperatorUsername = ?, OperatorPassword = ?, OperatorRoles = ? 
+                    WHERE OperatorID = ?
+                ");
+                return $stmt->execute([$username, $password, $role, $id]);
+            } else {
+                // Update without changing password
+                $stmt = $this->pdo->prepare("
+                    UPDATE $this->tableName 
+                    SET OperatorUsername = ?, OperatorRoles = ? 
+                    WHERE OperatorID = ?
+                ");
+                return $stmt->execute([$username, $role, $id]);
+            }
         } catch (PDOException $e) {
             return false;
         }
     }
 
-    public function deleteUser(int $userId): bool
+    /**
+     * Delete user
+     */
+    public function deleteUser(int $id): bool
     {
         try {
             $stmt = $this->pdo->prepare("DELETE FROM $this->tableName WHERE OperatorID = ?");
-            return $stmt->execute([$userId]);
+            return $stmt->execute([$id]);
         } catch (PDOException $e) {
             return false;
         }
     }
 
-    public function listUsers(): array
+    /**
+     * List users with optional filters
+     */
+    public function listUsers(?string $search = null, ?string $role = null): array
     {
         try {
-            $stmt = $this->pdo->query("
-                SELECT OperatorID, OperatorUsername, OperatorRoles, CreatedAt, UpdatedAt
-                FROM $this->tableName
-                ORDER BY OperatorUsername ASC
-            ");
+            $sql = "SELECT * FROM $this->tableName WHERE 1=1";
+            $params = [];
+
+            if (!empty($search)) {
+                $sql .= " AND OperatorUsername LIKE ?";
+                $params[] = "%$search%";
+            }
+
+            if (!empty($role)) {
+                $sql .= " AND OperatorRoles = ?";
+                $params[] = $role;
+            }
+
+            $sql .= " ORDER BY OperatorUsername ASC";
+
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($params);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             return [];
+        }
+    }
+
+    public function getUserById(int $id): ?array
+    {
+        try {
+            $stmt = $this->pdo->prepare("SELECT * FROM $this->tableName WHERE OperatorID = ?");
+            $stmt->execute([$id]);
+            return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        } catch (PDOException $e) {
+            return null;
         }
     }
 }

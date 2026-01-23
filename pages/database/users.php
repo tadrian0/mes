@@ -1,166 +1,252 @@
 <?php
 require_once $_SERVER['DOCUMENT_ROOT'] . '/mes/includes/Config.php';
-require_once '../../includes/IsAdmin.php';
+require_once INCLUDE_PATH . 'IsAdmin.php';
 require_once INCLUDE_PATH . 'Database.php';
-require_once '../../includes/UserManager.php';
+require_once INCLUDE_PATH . 'UserManager.php';
 
 $isAdmin = isAdmin();
-if (!$isAdmin) {
-    header('Location: login.php');
-    exit;
-}
-
 $userManager = new UserManager($pdo);
 
-$message = '';
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['create'])) {
-        $username = trim($_POST['username'] ?? '');
-        $password = trim($_POST['password'] ?? '');
-        $roles = trim($_POST['roles'] ?? 'operator');
-        if ($userManager->createUser($username, $password, $roles)) {
-            $message = 'User created successfully.';
+$search = $_GET['search'] ?? null;
+$filterRole = $_GET['role'] ?? null;
+
+$users = $userManager->listUsers($search, $filterRole);
+
+if ($isAdmin && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $redirect = strtok($_SERVER["REQUEST_URI"], '?');
+    
+    if (isset($_POST['create_user'])) {
+        $username = trim($_POST['username']);
+        $password = trim($_POST['password']);
+        $role = $_POST['role'];
+
+        if ($userManager->createUser($username, $password, $role)) {
+            header("Location: $redirect?msg=created"); exit;
         } else {
-            $message = 'Error creating user.';
+            $error = "Failed to create user (Username might be taken).";
         }
-    } elseif (isset($_POST['edit'])) {
-        $userId = (int) ($_POST['user_id'] ?? 0);
-        $username = trim($_POST['edit_username'] ?? '');
-        $roles = trim($_POST['edit_roles'] ?? '');
-        if ($userManager->updateUser($userId, $username, null, $roles)) {
-            $message = 'User updated successfully.';
+    }
+
+    if (isset($_POST['edit_user'])) {
+        $id = (int)$_POST['user_id'];
+        $username = trim($_POST['edit_username']);
+        $role = $_POST['edit_role'];
+        $password = !empty($_POST['edit_password']) ? trim($_POST['edit_password']) : null;
+
+        if ($userManager->updateUser($id, $username, $password, $role)) {
+            header("Location: $redirect?msg=updated"); exit;
         } else {
-            $message = 'Error updating user.';
+            $error = "Failed to update user.";
         }
-    } elseif (isset($_POST['delete'])) {
-        $userId = (int) ($_POST['user_id'] ?? 0);
-        if ($userId !== $_SESSION['user_id'] && $userManager->deleteUser($userId)) {
-            $message = 'User deleted successfully.';
+    }
+
+    if (isset($_POST['delete_user'])) {
+        if ($userManager->deleteUser((int)$_POST['user_id'])) {
+            header("Location: $redirect?msg=deleted"); exit;
         } else {
-            $message = 'Error deleting user or cannot delete self.';
+            $error = "Failed to delete user.";
         }
     }
 }
-
-$users = $userManager->listUsers();
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MES Backoffice - Users</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
-        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <title>MES - User Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="<?= $siteBaseUrl ?>styles/backoffice.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
 </head>
-
 <body>
-    <?php include '../../includes/Sidebar.php'; ?>
+    <?php include INCLUDE_PATH . 'Sidebar.php'; ?>
 
     <div class="content">
-        <h1>Users</h1>
-        <?php if ($message): ?>
-            <div class="alert alert-info"><?php echo htmlspecialchars($message); ?></div>
+        <h1>User Management</h1>
+        
+        <?php if (isset($_GET['msg'])): ?>
+            <div class="alert alert-success alert-dismissible fade show">
+                Action completed successfully.
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        <?php endif; ?>
+        
+        <?php if (isset($error)): ?>
+            <div class="alert alert-danger alert-dismissible fade show">
+                <?= htmlspecialchars($error) ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
         <?php endif; ?>
 
-        <h3>Add New User</h3>
-        <form method="post" action="">
-            <div class="mb-3">
-                <label for="username" class="form-label">Username</label>
-                <input type="text" class="form-control" id="username" name="username" required>
-            </div>
-            <div class="mb-3">
-                <label for="password" class="form-label">Password</label>
-                <input type="password" class="form-control" id="password" name="password" required>
-            </div>
-            <div class="mb-3">
-                <label for="roles" class="form-label">Roles (e.g., admin;operator)</label>
-                <input type="text" class="form-control" id="roles" name="roles" value="operator">
-            </div>
-            <button type="submit" name="create" class="btn btn-primary">Add User</button>
-        </form>
-
-        <h3 class="mt-4">User List</h3>
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Username</th>
-                    <th>Roles</th>
-                    <th>Created</th>
-                    <th>Updated</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($users as $user): ?>
-                    <tr>
-                        <td><?php echo htmlspecialchars($user['OperatorID']); ?></td>
-                        <td><?php echo htmlspecialchars($user['OperatorUsername']); ?></td>
-                        <td><?php echo htmlspecialchars($user['OperatorRoles']); ?></td>
-                        <td><?php echo htmlspecialchars($user['CreatedAt']); ?></td>
-                        <td><?php echo htmlspecialchars($user['UpdatedAt']); ?></td>
-                        <td>
-                            <button type="button" class="btn btn-sm btn-warning" data-bs-toggle="modal"
-                                data-bs-target="#editModal<?php echo $user['OperatorID']; ?>">
-                                Edit
-                            </button>
-                            <form method="post" action="" style="display: inline;"
-                                onsubmit="return confirm('Are you sure you want to delete this user?');">
-                                <input type="hidden" name="user_id" value="<?php echo $user['OperatorID']; ?>">
-                                <button type="submit" name="delete" class="btn btn-sm btn-danger" <?php if ($user['OperatorID'] == $_SESSION['user_id'])
-                                    echo 'disabled'; ?>>Delete</button>
-                            </form>
-                        </td>
-                    </tr>
-                    <div class="modal fade" id="editModal<?php echo $user['OperatorID']; ?>" tabindex="-1"
-                        aria-labelledby="editModalLabel<?php echo $user['OperatorID']; ?>" aria-hidden="true">
-                        <div class="modal-dialog">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title" id="editModalLabel<?php echo $user['OperatorID']; ?>">Edit User
-                                    </h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal"
-                                        aria-label="Close"></button>
-                                </div>
-                                <form method="post" action="">
-                                    <div class="modal-body">
-                                        <input type="hidden" name="user_id" value="<?php echo $user['OperatorID']; ?>">
-                                        <div class="mb-3">
-                                            <label for="edit_username_<?php echo $user['OperatorID']; ?>"
-                                                class="form-label">Username</label>
-                                            <input type="text" class="form-control"
-                                                id="edit_username_<?php echo $user['OperatorID']; ?>" name="edit_username"
-                                                value="<?php echo htmlspecialchars($user['OperatorUsername']); ?>" required>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="edit_roles_<?php echo $user['OperatorID']; ?>"
-                                                class="form-label">Roles</label>
-                                            <input type="text" class="form-control"
-                                                id="edit_roles_<?php echo $user['OperatorID']; ?>" name="edit_roles"
-                                                value="<?php echo htmlspecialchars($user['OperatorRoles']); ?>">
-                                        </div>
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary"
-                                            data-bs-dismiss="modal">Close</button>
-                                        <button type="submit" name="edit" class="btn btn-primary">Save changes</button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
+        <div class="card mb-4">
+            <div class="card-header bg-light"><i class="fa-solid fa-filter me-1"></i> Search & Filter</div>
+            <div class="card-body py-3">
+                <form method="GET" class="row g-2 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label small">Search Username</label>
+                        <input type="text" name="search" class="form-control form-control-sm" placeholder="e.g. John" value="<?= htmlspecialchars($search ?? '') ?>">
                     </div>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
+                    <div class="col-md-3">
+                        <label class="form-label small">Role</label>
+                        <select name="role" class="form-select form-select-sm">
+                            <option value="">All Roles</option>
+                            <option value="operator" <?= $filterRole === 'operator' ? 'selected' : '' ?>>Operator</option>
+                            <option value="admin" <?= $filterRole === 'admin' ? 'selected' : '' ?>>Admin</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary btn-sm w-100"><i class="fa-solid fa-search"></i> Filter</button>
+                    </div>
+                    <div class="col-md-2">
+                         <a href="users.php" class="btn btn-secondary btn-sm w-100">Clear</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <?php if ($isAdmin): ?>
+            <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addUserModal">
+                <i class="fa-solid fa-plus"></i> New User
+            </button>
+        <?php endif; ?>
+
+        <div class="table-responsive">
+            <table class="table table-hover table-striped align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th>ID</th>
+                        <th>Username</th>
+                        <th>Role</th>
+                        <th>Created At</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (count($users) > 0): ?>
+                        <?php foreach ($users as $u): ?>
+                            <tr>
+                                <td><?= htmlspecialchars($u['OperatorID']) ?></td>
+                                <td class="fw-bold"><?= htmlspecialchars($u['OperatorUsername']) ?></td>
+                                <td>
+                                    <?php if($u['OperatorRoles'] == 'admin'): ?>
+                                        <span class="badge bg-danger">Admin</span>
+                                    <?php else: ?>
+                                        <span class="badge bg-success">Operator</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td><?= htmlspecialchars($u['CreatedAt']) ?></td>
+                                <td>
+                                    <?php if ($isAdmin): ?>
+                                        <button class="btn btn-sm btn-warning btn-edit" 
+                                                data-id="<?= $u['OperatorID'] ?>"
+                                                data-username="<?= htmlspecialchars($u['OperatorUsername']) ?>"
+                                                data-role="<?= htmlspecialchars($u['OperatorRoles']) ?>">
+                                            <i class="fa-solid fa-pen"></i>
+                                        </button>
+                                        <form method="post" class="d-inline" onsubmit="return confirm('Delete this user?');">
+                                            <input type="hidden" name="user_id" value="<?= $u['OperatorID'] ?>">
+                                            <button type="submit" name="delete_user" class="btn btn-sm btn-danger">
+                                                <i class="fa-solid fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <tr><td colspan="5" class="text-center text-muted">No users found.</td></tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
-        crossorigin="anonymous"></script>
-</body>
+    <div class="modal fade" id="addUserModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create New User</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="post">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Username</label>
+                            <input type="text" name="username" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Password</label>
+                            <input type="password" name="password" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Role</label>
+                            <select name="role" class="form-select" required>
+                                <option value="operator">Operator</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" name="create_user" class="btn btn-primary">Create User</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
+    <div class="modal fade" id="editUserModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit User</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="post">
+                    <div class="modal-body">
+                        <input type="hidden" name="user_id" id="edit_user_id">
+                        <div class="mb-3">
+                            <label class="form-label">Username</label>
+                            <input type="text" name="edit_username" id="edit_username" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Role</label>
+                            <select name="edit_role" id="edit_role" class="form-select" required>
+                                <option value="operator">Operator</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">New Password (Leave blank to keep current)</label>
+                            <input type="password" name="edit_password" class="form-control">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" name="edit_user" class="btn btn-warning">Update User</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('.btn-edit').click(function() {
+                let id = $(this).data('id');
+                let username = $(this).data('username');
+                let role = $(this).data('role');
+
+                $('#edit_user_id').val(id);
+                $('#edit_username').val(username);
+                $('#edit_role').val(role);
+
+                new bootstrap.Modal(document.getElementById('editUserModal')).show();
+            });
+        });
+    </script>
+</body>
 </html>

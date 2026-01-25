@@ -28,7 +28,7 @@ $statusClass   = $data['statusClass'];
                 <div class="text-center mb-4">
                     <i class="fa-solid fa-user-circle fa-4x text-primary mb-3"></i>
                     <h3 class="fw-bold text-dark">Operator Login</h3>
-                    <p class="text-muted">Scan badge or enter credentials</p>
+                    <p class="text-muted">Enter credentials</p>
                 </div>
                 <div id="login-alert" class="alert alert-danger d-none d-flex align-items-center mb-3">
                     <i class="fa-solid fa-triangle-exclamation me-2"></i><span id="login-error-msg"></span>
@@ -36,7 +36,7 @@ $statusClass   = $data['statusClass'];
                 <form id="loginForm" onsubmit="return false;">
                     <div class="form-floating mb-3">
                         <input type="text" class="form-control" id="login-username" placeholder="User" required>
-                        <label>Username / Badge ID</label>
+                        <label>Username</label>
                     </div>
                     <div class="form-floating mb-4">
                         <input type="password" class="form-control" id="login-password" placeholder="Pass" required>

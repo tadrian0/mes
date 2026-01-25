@@ -111,5 +111,33 @@ class UserManager
             return null;
         }
     }
+
+    /**
+     * Get user details by Username (Used for Login)
+     */
+    public function getUserByUsername(string $username): ?array
+    {
+        try {
+            $stmt = $this->pdo->prepare("SELECT * FROM $this->tableName WHERE OperatorUsername = ?");
+            $stmt->execute([$username]);
+            return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        } catch (PDOException $e) {
+            return null;
+        }
+    }
+
+    /**
+     * Helper to get just the username string by ID
+     */
+    public function getUsernameById(int $id): ?string
+    {
+        try {
+            $stmt = $this->pdo->prepare("SELECT OperatorUsername FROM $this->tableName WHERE OperatorID = ?");
+            $stmt->execute([$id]);
+            return $stmt->fetchColumn() ?: null;
+        } catch (PDOException $e) {
+            return null;
+        }
+    }
 }
 ?>

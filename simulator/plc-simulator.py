@@ -3,7 +3,7 @@ import time
 import random
 import sys
 
-# CONFIGURATION
+# config:
 BASE_URL = "http://localhost/mes/api" 
 EXPORT_ENDPOINT = f"{BASE_URL}/machines-export.php"
 RECEIVE_ENDPOINT = f"{BASE_URL}/wago-receive.php"

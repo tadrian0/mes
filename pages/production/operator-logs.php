@@ -251,71 +251,22 @@ if (isset($_GET['msg'])) {
                             <td><small><?= htmlspecialchars($log['Notes']) ?></small></td>
                             <td>
                                 <?php if ($isAdmin): ?>
-                                    <button type="button" class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#editLogModal<?= $log['LogID'] ?>">
+                                    <button type="button" class="btn btn-sm btn-warning edit-log-btn"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#editLogModal"
+                                        data-log-id="<?= $log['LogID'] ?>"
+                                        data-operator-id="<?= $log['OperatorID'] ?>"
+                                        data-machine-id="<?= $log['MachineID'] ?>"
+                                        data-login-time="<?= date('Y-m-d\TH:i', strtotime($log['LoginTime'])) ?>"
+                                        data-logout-time="<?= $log['LogoutTime'] ? date('Y-m-d\TH:i', strtotime($log['LogoutTime'])) : '' ?>"
+                                        data-notes="<?= htmlspecialchars($log['Notes']) ?>"
+                                    >
                                         <i class="fa-solid fa-pen"></i>
                                     </button>
                                     <form method="post" action="" style="display:inline" onsubmit="return confirm('Delete this log entry?');">
                                         <input type="hidden" name="log_id" value="<?= $log['LogID'] ?>">
                                         <button type="submit" name="delete" class="btn btn-sm btn-danger"><i class="fa-solid fa-trash"></i></button>
                                     </form>
-
-                                    <div class="modal fade" id="editLogModal<?= $log['LogID'] ?>" tabindex="-1" aria-hidden="true">
-                                        <div class="modal-dialog">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <h5 class="modal-title">Edit Log #<?= $log['LogID'] ?></h5>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                </div>
-                                                <form method="post" action="">
-                                                    <div class="modal-body">
-                                                        <input type="hidden" name="log_id" value="<?= $log['LogID'] ?>">
-                                                        
-                                                        <div class="mb-3">
-                                                            <label class="form-label">Operator</label>
-                                                            <select class="form-control" name="edit_operator_id" required>
-                                                                <?php foreach ($users as $user): ?>
-                                                                    <option value="<?= $user['OperatorID'] ?>" <?= $user['OperatorID'] == $log['OperatorID'] ? 'selected' : '' ?>>
-                                                                        <?= htmlspecialchars($user['OperatorUsername']) ?>
-                                                                    </option>
-                                                                <?php endforeach; ?>
-                                                            </select>
-                                                        </div>
-                                                        
-                                                        <div class="mb-3">
-                                                            <label class="form-label">Machine</label>
-                                                            <select class="form-control" name="edit_machine_id" required>
-                                                                <?php foreach ($machines as $machine): ?>
-                                                                    <option value="<?= $machine['MachineID'] ?>" <?= $machine['MachineID'] == $log['MachineID'] ? 'selected' : '' ?>>
-                                                                        <?= htmlspecialchars($machine['Name']) ?>
-                                                                    </option>
-                                                                <?php endforeach; ?>
-                                                            </select>
-                                                        </div>
-                                                        
-                                                        <div class="row">
-                                                            <div class="col-md-6 mb-3">
-                                                                <label class="form-label">Login Time</label>
-                                                                <input type="datetime-local" class="form-control" name="edit_login_time" value="<?= date('Y-m-d\TH:i', strtotime($log['LoginTime'])) ?>" required>
-                                                            </div>
-                                                            <div class="col-md-6 mb-3">
-                                                                <label class="form-label">Logout Time</label>
-                                                                <input type="datetime-local" class="form-control" name="edit_logout_time" 
-                                                                    value="<?= $log['LogoutTime'] ? date('Y-m-d\TH:i', strtotime($log['LogoutTime'])) : '' ?>">
-                                                            </div>
-                                                        </div>
-                                                        <div class="mb-3">
-                                                            <label class="form-label">Notes</label>
-                                                            <textarea class="form-control" name="edit_notes"><?= htmlspecialchars($log['Notes']) ?></textarea>
-                                                        </div>
-                                                    </div>
-                                                    <div class="modal-footer">
-                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                                        <button type="submit" name="edit" class="btn btn-primary">Save Changes</button>
-                                                    </div>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    </div>
                                 <?php endif; ?>
                             </td>
                         </tr>
@@ -325,6 +276,98 @@ if (isset($_GET['msg'])) {
         <?php endif; ?>
     </div>
 
+    <!-- Shared Edit Modal -->
+    <?php if ($isAdmin): ?>
+    <div class="modal fade" id="editLogModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Log #<span id="modalLogIdDisplay"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="post" action="">
+                    <div class="modal-body">
+                        <input type="hidden" name="log_id" id="editLogId">
+
+                        <div class="mb-3">
+                            <label class="form-label">Operator</label>
+                            <select class="form-control" name="edit_operator_id" id="editOperatorId" required>
+                                <?php foreach ($users as $user): ?>
+                                    <option value="<?= $user['OperatorID'] ?>">
+                                        <?= htmlspecialchars($user['OperatorUsername']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Machine</label>
+                            <select class="form-control" name="edit_machine_id" id="editMachineId" required>
+                                <?php foreach ($machines as $machine): ?>
+                                    <option value="<?= $machine['MachineID'] ?>">
+                                        <?= htmlspecialchars($machine['Name']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Login Time</label>
+                                <input type="datetime-local" class="form-control" name="edit_login_time" id="editLoginTime" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Logout Time</label>
+                                <input type="datetime-local" class="form-control" name="edit_logout_time" id="editLogoutTime">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Notes</label>
+                            <textarea class="form-control" name="edit_notes" id="editNotes"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" name="edit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var editLogModal = document.getElementById('editLogModal');
+            if (editLogModal) {
+                editLogModal.addEventListener('show.bs.modal', function (event) {
+                    var button = event.relatedTarget;
+                    var logId = button.getAttribute('data-log-id');
+                    var operatorId = button.getAttribute('data-operator-id');
+                    var machineId = button.getAttribute('data-machine-id');
+                    var loginTime = button.getAttribute('data-login-time');
+                    var logoutTime = button.getAttribute('data-logout-time');
+                    var notes = button.getAttribute('data-notes');
+
+                    var modalTitle = editLogModal.querySelector('#modalLogIdDisplay');
+                    var inputLogId = editLogModal.querySelector('#editLogId');
+                    var selectOperator = editLogModal.querySelector('#editOperatorId');
+                    var selectMachine = editLogModal.querySelector('#editMachineId');
+                    var inputLoginTime = editLogModal.querySelector('#editLoginTime');
+                    var inputLogoutTime = editLogModal.querySelector('#editLogoutTime');
+                    var inputNotes = editLogModal.querySelector('#editNotes');
+
+                    modalTitle.textContent = logId;
+                    inputLogId.value = logId;
+                    selectOperator.value = operatorId;
+                    selectMachine.value = machineId;
+                    inputLoginTime.value = loginTime;
+                    inputLogoutTime.value = logoutTime;
+                    inputNotes.value = notes;
+                });
+            }
+        });
+    </script>
 </body>
 </html>

@@ -93,4 +93,112 @@ $(document).ready(function() {
             }
         });
     }
+
+    // --- Discard Logic ---
+    let rejectData = null;
+    let selectedCategoryId = null;
+    let selectedReasonId = null;
+
+    $('#btn-discard').click(function() {
+        new bootstrap.Modal(document.getElementById('modal-discard')).show();
+        // Reset state
+        selectedCategoryId = null;
+        selectedReasonId = null;
+        $('#reject-qty').val(1);
+        $('#reject-notes').val('');
+        $('#reject-reasons').html('<div class="text-center p-3 text-muted">Select a category</div>');
+        $('#reject-categories .active').removeClass('active');
+        updateSubmitButton();
+
+        if (!rejectData) {
+            fetchRejectData();
+        }
+    });
+
+    function fetchRejectData() {
+        $.post('api/totem-ajax.php', { action: 'fetch_reject_data', machine_id: MACHINE_ID }, function(res) {
+            if (res.status === 'success') {
+                rejectData = res;
+                renderCategories();
+            } else {
+                alert('Failed to load discard options.');
+            }
+        }, 'json');
+    }
+
+    function renderCategories() {
+        const $container = $('#reject-categories');
+        $container.empty();
+
+        rejectData.categories.forEach(cat => {
+            let $el = $(`<a href="#" class="list-group-item list-group-item-action py-3">${cat.CategoryName}</a>`);
+            $el.click(function(e) {
+                e.preventDefault();
+                $('#reject-categories .active').removeClass('active');
+                $(this).addClass('active');
+                selectedCategoryId = cat.CategoryID;
+                renderReasons(cat.CategoryID);
+            });
+            $container.append($el);
+        });
+    }
+
+    function renderReasons(catId) {
+        const $container = $('#reject-reasons');
+        $container.empty();
+        selectedReasonId = null;
+        updateSubmitButton();
+
+        const reasons = rejectData.reasons.filter(r => r.CategoryID == catId);
+
+        if (reasons.length === 0) {
+            $container.html('<div class="text-center p-3 text-muted">No reasons found for this category.</div>');
+            return;
+        }
+
+        reasons.forEach(reason => {
+            let $el = $(`<a href="#" class="list-group-item list-group-item-action py-3">${reason.ReasonName}</a>`);
+            $el.click(function(e) {
+                e.preventDefault();
+                $('#reject-reasons .active').removeClass('active');
+                $(this).addClass('active');
+                selectedReasonId = reason.ReasonID;
+                updateSubmitButton();
+            });
+            $container.append($el);
+        });
+    }
+
+    function updateSubmitButton() {
+        $('#btn-submit-reject').prop('disabled', !selectedCategoryId || !selectedReasonId);
+    }
+
+    $('#btn-submit-reject').click(function() {
+        const qty = $('#reject-qty').val();
+        const notes = $('#reject-notes').val();
+
+        if (!selectedCategoryId || !selectedReasonId || qty <= 0) return;
+
+        $(this).prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin"></i> Saving...');
+
+        $.post('api/totem-ajax.php', {
+            action: 'submit_reject',
+            machine_id: MACHINE_ID,
+            category_id: selectedCategoryId,
+            reason_id: selectedReasonId,
+            quantity: qty,
+            notes: notes
+        }, function(res) {
+            if(res.status === 'success') {
+                bootstrap.Modal.getInstance(document.getElementById('modal-discard')).hide();
+                location.reload(); // Refresh to show new log
+            } else {
+                alert(res.message);
+                $('#btn-submit-reject').prop('disabled', false).html('<i class="fa-solid fa-check"></i> Confirm Discard');
+            }
+        }, 'json').fail(function() {
+            alert('Connection error.');
+            $('#btn-submit-reject').prop('disabled', false).html('<i class="fa-solid fa-check"></i> Confirm Discard');
+        });
+    });
 });

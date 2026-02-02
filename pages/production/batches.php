@@ -312,103 +312,25 @@ if (isset($_GET['msg'])) {
                                 <td><?= date('d/m/Y H:i', strtotime($batch['PrintTime'])) ?></td>
                                 <td>
                                     <?php if ($isAdmin): ?>
-                                        <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#editBatchModal<?= $batch['BatchID'] ?>">
+                                        <button class="btn btn-sm btn-warning"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#editBatchModal"
+                                            data-id="<?= $batch['BatchID'] ?>"
+                                            data-code="<?= htmlspecialchars($batch['BatchCode']) ?>"
+                                            data-type="<?= htmlspecialchars($batch['BatchType']) ?>"
+                                            data-order-id="<?= $batch['ProductionOrderID'] ?>"
+                                            data-article-id="<?= $batch['ArticleID'] ?>"
+                                            data-operator-id="<?= $batch['OperatorID'] ?>"
+                                            data-machine-id="<?= $batch['MachineID'] ?>"
+                                            data-quantity="<?= $batch['Quantity'] ?>"
+                                            data-print-time="<?= date('Y-m-d\TH:i', strtotime($batch['PrintTime'])) ?>"
+                                            data-notes="<?= htmlspecialchars($batch['Notes']) ?>">
                                             <i class="fa-solid fa-pen"></i>
                                         </button>
                                         <form method="post" action="" style="display:inline" onsubmit="return confirm('Delete this batch?');">
                                             <input type="hidden" name="batch_id" value="<?= $batch['BatchID'] ?>">
                                             <button type="submit" name="delete" class="btn btn-sm btn-danger"><i class="fa-solid fa-trash"></i></button>
                                         </form>
-
-                                        <div class="modal fade" id="editBatchModal<?= $batch['BatchID'] ?>" tabindex="-1" aria-hidden="true">
-                                            <div class="modal-dialog modal-lg">
-                                                <div class="modal-content">
-                                                    <div class="modal-header">
-                                                        <h5 class="modal-title">Edit Batch #<?= $batch['BatchID'] ?></h5>
-                                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                    </div>
-                                                    <form method="post" action="">
-                                                        <div class="modal-body">
-                                                            <input type="hidden" name="batch_id" value="<?= $batch['BatchID'] ?>">
-                                                            
-                                                            <div class="row">
-                                                                <div class="col-md-6 mb-3">
-                                                                    <label class="form-label">Batch Code</label>
-                                                                    <input type="text" class="form-control" name="edit_batch_code" value="<?= htmlspecialchars($batch['BatchCode']) ?>" required>
-                                                                </div>
-                                                                <div class="col-md-6 mb-3">
-                                                                    <label class="form-label">Type</label>
-                                                                    <select class="form-select" name="edit_batch_type" required>
-                                                                        <option value="Finished Product" <?= $batch['BatchType'] == 'Finished Product' ? 'selected' : '' ?>>Finished Product</option>
-                                                                        <option value="Partial Product" <?= $batch['BatchType'] == 'Partial Product' ? 'selected' : '' ?>>Partial Product</option>
-                                                                        <option value="Raw Material Remnant" <?= $batch['BatchType'] == 'Raw Material Remnant' ? 'selected' : '' ?>>Raw Material Remnant</option>
-                                                                    </select>
-                                                                </div>
-                                                            </div>
-                                                            
-                                                            <div class="row">
-                                                                <div class="col-md-6 mb-3">
-                                                                    <label class="form-label">Order ID</label>
-                                                                    <input type="number" class="form-control" name="edit_order_id" value="<?= $batch['ProductionOrderID'] ?>" required>
-                                                                </div>
-                                                                <div class="col-md-6 mb-3">
-                                                                    <label class="form-label">Article</label>
-                                                                    <select class="form-select" name="edit_article_id" required>
-                                                                        <?php foreach ($articles as $art): ?>
-                                                                            <option value="<?= $art['ArticleID'] ?>" <?= $art['ArticleID'] == $batch['ArticleID'] ? 'selected' : '' ?>>
-                                                                                <?= htmlspecialchars($art['Name']) ?>
-                                                                            </option>
-                                                                        <?php endforeach; ?>
-                                                                    </select>
-                                                                </div>
-                                                            </div>
-
-                                                            <div class="row">
-                                                                <div class="col-md-6 mb-3">
-                                                                    <label class="form-label">Operator</label>
-                                                                    <select class="form-select" name="edit_operator_id" required>
-                                                                        <?php foreach ($users as $u): ?>
-                                                                            <option value="<?= $u['OperatorID'] ?>" <?= $u['OperatorID'] == $batch['OperatorID'] ? 'selected' : '' ?>>
-                                                                                <?= htmlspecialchars($u['OperatorUsername']) ?>
-                                                                            </option>
-                                                                        <?php endforeach; ?>
-                                                                    </select>
-                                                                </div>
-                                                                <div class="col-md-6 mb-3">
-                                                                    <label class="form-label">Machine</label>
-                                                                    <select class="form-select" name="edit_machine_id" required>
-                                                                        <?php foreach ($machines as $m): ?>
-                                                                            <option value="<?= $m['MachineID'] ?>" <?= $m['MachineID'] == $batch['MachineID'] ? 'selected' : '' ?>>
-                                                                                <?= htmlspecialchars($m['Name']) ?>
-                                                                            </option>
-                                                                        <?php endforeach; ?>
-                                                                    </select>
-                                                                </div>
-                                                            </div>
-                                                            
-                                                            <div class="row">
-                                                                <div class="col-md-6 mb-3">
-                                                                    <label class="form-label">Quantity</label>
-                                                                    <input type="number" step="0.01" class="form-control" name="edit_quantity" value="<?= $batch['Quantity'] ?>" required>
-                                                                </div>
-                                                                <div class="col-md-6 mb-3">
-                                                                    <label class="form-label">Print Time</label>
-                                                                    <input type="datetime-local" class="form-control" name="edit_print_time" value="<?= date('Y-m-d\TH:i', strtotime($batch['PrintTime'])) ?>">
-                                                                </div>
-                                                            </div>
-                                                            <div class="mb-3">
-                                                                <label class="form-label">Notes</label>
-                                                                <textarea class="form-control" name="edit_notes"><?= htmlspecialchars($batch['Notes']) ?></textarea>
-                                                            </div>
-                                                        </div>
-                                                        <div class="modal-footer">
-                                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                                            <button type="submit" name="edit" class="btn btn-primary">Save Changes</button>
-                                                        </div>
-                                                    </form>
-                                                </div>
-                                            </div>
-                                        </div>
                                     <?php endif; ?>
                                 </td>
                             </tr>
@@ -418,6 +340,142 @@ if (isset($_GET['msg'])) {
             </table>
         </div>
     </div>
+
+    <?php if ($isAdmin): ?>
+    <div class="modal fade" id="editBatchModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Batch</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="post" action="">
+                    <div class="modal-body">
+                        <input type="hidden" name="batch_id">
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Batch Code</label>
+                                <input type="text" class="form-control" name="edit_batch_code" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Type</label>
+                                <select class="form-select" name="edit_batch_type" required>
+                                    <option value="Finished Product">Finished Product</option>
+                                    <option value="Partial Product">Partial Product</option>
+                                    <option value="Raw Material Remnant">Raw Material Remnant</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Order ID</label>
+                                <input type="number" class="form-control" name="edit_order_id" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Article</label>
+                                <select class="form-select" name="edit_article_id" required>
+                                    <?php foreach ($articles as $art): ?>
+                                        <option value="<?= $art['ArticleID'] ?>">
+                                            <?= htmlspecialchars($art['Name']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Operator</label>
+                                <select class="form-select" name="edit_operator_id" required>
+                                    <?php foreach ($users as $u): ?>
+                                        <option value="<?= $u['OperatorID'] ?>">
+                                            <?= htmlspecialchars($u['OperatorUsername']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Machine</label>
+                                <select class="form-select" name="edit_machine_id" required>
+                                    <?php foreach ($machines as $m): ?>
+                                        <option value="<?= $m['MachineID'] ?>">
+                                            <?= htmlspecialchars($m['Name']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Quantity</label>
+                                <input type="number" step="0.01" class="form-control" name="edit_quantity" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Print Time</label>
+                                <input type="datetime-local" class="form-control" name="edit_print_time">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Notes</label>
+                            <textarea class="form-control" name="edit_notes"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" name="edit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var editBatchModal = document.getElementById('editBatchModal');
+        editBatchModal.addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+
+            var batchId = button.getAttribute('data-id');
+            var batchCode = button.getAttribute('data-code');
+            var batchType = button.getAttribute('data-type');
+            var orderId = button.getAttribute('data-order-id');
+            var articleId = button.getAttribute('data-article-id');
+            var operatorId = button.getAttribute('data-operator-id');
+            var machineId = button.getAttribute('data-machine-id');
+            var quantity = button.getAttribute('data-quantity');
+            var printTime = button.getAttribute('data-print-time');
+            var notes = button.getAttribute('data-notes');
+
+            var modalTitle = editBatchModal.querySelector('.modal-title');
+            var inputBatchId = editBatchModal.querySelector('input[name="batch_id"]');
+            var inputBatchCode = editBatchModal.querySelector('input[name="edit_batch_code"]');
+            var selectBatchType = editBatchModal.querySelector('select[name="edit_batch_type"]');
+            var inputOrderId = editBatchModal.querySelector('input[name="edit_order_id"]');
+            var selectArticleId = editBatchModal.querySelector('select[name="edit_article_id"]');
+            var selectOperatorId = editBatchModal.querySelector('select[name="edit_operator_id"]');
+            var selectMachineId = editBatchModal.querySelector('select[name="edit_machine_id"]');
+            var inputQuantity = editBatchModal.querySelector('input[name="edit_quantity"]');
+            var inputPrintTime = editBatchModal.querySelector('input[name="edit_print_time"]');
+            var textareaNotes = editBatchModal.querySelector('textarea[name="edit_notes"]');
+
+            modalTitle.textContent = 'Edit Batch #' + batchId;
+            inputBatchId.value = batchId;
+            inputBatchCode.value = batchCode;
+            selectBatchType.value = batchType;
+            inputOrderId.value = orderId;
+            selectArticleId.value = articleId;
+            selectOperatorId.value = operatorId;
+            selectMachineId.value = machineId;
+            inputQuantity.value = quantity;
+            inputPrintTime.value = printTime;
+            textareaNotes.value = notes;
+        });
+    });
+    </script>
+    <?php endif; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>

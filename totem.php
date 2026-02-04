@@ -1,4 +1,8 @@
 <?php
+if (!file_exists(__DIR__ . '/includes/Database.php')) {
+    header('Location: install.php');
+    exit;
+}
 require_once 'includes/Config.php';
 require_once 'includes/Database.php';
 require_once 'includes/MachineManager.php';

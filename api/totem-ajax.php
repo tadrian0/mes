@@ -5,6 +5,9 @@ require_once '../includes/OperatorLogsManager.php';
 require_once '../includes/UserManager.php';
 require_once '../includes/ProductionOrderManager.php';
 require_once '../includes/ProductionLogsManager.php';
+require_once '../includes/RejectManager.php';
+require_once '../includes/RejectCategoryManager.php';
+require_once '../includes/RejectReasonManager.php';
 
 header('Content-Type: application/json');
 
@@ -20,6 +23,9 @@ $logManager = new OperatorLogsManager($pdo);
 $userManager = new UserManager($pdo);
 $poManager = new ProductionOrderManager($pdo);
 $prodLogManager = new ProductionLogsManager($pdo);
+$rejectManager = new RejectManager($pdo);
+$rejectCatManager = new RejectCategoryManager($pdo);
+$rejectReasonManager = new RejectReasonManager($pdo);
 
 try {
     if ($action === 'login') {
@@ -78,6 +84,55 @@ try {
             }
         } else {
             sendJson(['status' => 'error', 'message' => 'Failed to update order status.']);
+        }
+    }
+
+    elseif ($action === 'fetch_reject_data') {
+        $categories = $rejectCatManager->listCategories();
+        $reasons    = $rejectReasonManager->listReasons();
+
+        sendJson([
+            'status' => 'success',
+            'categories' => $categories,
+            'reasons' => $reasons
+        ]);
+    }
+
+    elseif ($action === 'submit_reject') {
+        $qty = (int)$_POST['quantity'];
+        $reasonId = (int)$_POST['reason_id'];
+        $categoryId = (int)$_POST['category_id'];
+        $notes = $_POST['notes'] ?? '';
+
+        if ($qty <= 0 || $reasonId <= 0 || $categoryId <= 0) {
+            sendJson(['status' => 'error', 'message' => 'Invalid quantity, category or reason.']);
+        }
+
+        $activeOrder = $poManager->getActiveOrderForMachine($machineId);
+        if (!$activeOrder) {
+            sendJson(['status' => 'error', 'message' => 'No active order.']);
+        }
+
+        $operators = $logManager->getActiveOperators($machineId);
+        if (empty($operators)) {
+            sendJson(['status' => 'error', 'message' => 'No operator logged in.']);
+        }
+        $operatorId = $operators[0]['OperatorID'];
+
+        if ($rejectManager->createReject(
+            $activeOrder['OrderID'],
+            $activeOrder['ArticleID'],
+            $operatorId,
+            $machineId,
+            $categoryId,
+            $reasonId,
+            $qty,
+            null,
+            $notes
+        )) {
+            sendJson(['status' => 'success']);
+        } else {
+            sendJson(['status' => 'error', 'message' => 'Failed to save reject record.']);
         }
     }
 

@@ -7,10 +7,12 @@ require_once 'includes/CountryManager.php';
 require_once 'includes/PlantManager.php';
 require_once 'includes/SectionManager.php';
 require_once 'includes/CityManager.php';
+require_once 'includes/RejectManager.php';
 
 session_start();
 
 $machineManager = new MachineManager($pdo);
+$rejectManager  = new RejectManager($pdo);
 $poManager      = new ProductionOrderManager($pdo);
 
 $machineId = isset($_GET['machine_id']) ? (int)$_GET['machine_id'] : 0;
@@ -33,6 +35,8 @@ else {
         'Maintenance' => 'status-maintenance',
         default => ''
     };
+
+    $data['recentRejects'] = $rejectManager->getRecentRejects($machineId, 3);
 }
 ?>
 <!DOCTYPE html>

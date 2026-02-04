@@ -92,6 +92,29 @@ class RejectManager
         }
     }
 
+    public function getRecentRejects(int $machineId, int $limit = 3): array
+    {
+        try {
+            $sql = "SELECT
+                        r.*,
+                        rr.ReasonName,
+                        rc.CategoryName
+                    FROM $this->tableName r
+                    LEFT JOIN reject_reason rr ON r.ReasonID = rr.ReasonID
+                    LEFT JOIN reject_category rc ON r.CategoryID = rc.CategoryID
+                    WHERE r.MachineID = ?
+                    ORDER BY r.RejectDate DESC
+                    LIMIT ?";
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindValue(1, $machineId, PDO::PARAM_INT);
+            $stmt->bindValue(2, $limit, PDO::PARAM_INT);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            return [];
+        }
+    }
+
     // --- Helpers for Dropdowns ---
 
     public function getCategories(): array {

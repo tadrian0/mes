@@ -1,6 +1,8 @@
 <?php
 require_once '../includes/Config.php';
 require_once '../includes/Database.php';
+require_once '../includes/Cors.php';
+require_once '../includes/ApiAuth.php';
 require_once '../includes/MachineManager.php';
 
 header('Content-Type: application/json');

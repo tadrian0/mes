@@ -157,6 +157,10 @@ class OperatorLogsManager
 
             $sql .= " ORDER BY l.LoginTime DESC";
 
+            if (empty($filterMachine) && empty($filterOperator) && empty($startDate) && empty($endDate)) {
+                $sql .= " LIMIT 1000";
+            }
+
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute($params);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);

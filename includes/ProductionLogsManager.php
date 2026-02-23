@@ -119,6 +119,10 @@ class ProductionLogsManager
 
             $sql .= " ORDER BY pl.StartTime DESC";
 
+            if (empty($filterMachine) && empty($filterOperator) && empty($filterOrder) && empty($startDate) && empty($endDate)) {
+                $sql .= " LIMIT 1000";
+            }
+
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute($params);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);

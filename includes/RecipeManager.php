@@ -197,14 +197,22 @@ class RecipeInputManager
         }
     }
 
-    public function listInputs(): array
+    public function listInputs(?int $recipeId = null): array
     {
         try {
-            $stmt = $this->pdo->query("
-                SELECT InputID, RecipeID, ArticleID, Quantity, Unit, InputType, CreatedAt, UpdatedAt
-                FROM $this->tableName
-                ORDER BY RecipeID ASC
-            ");
+            $sql = "SELECT InputID, RecipeID, ArticleID, Quantity, Unit, InputType, CreatedAt, UpdatedAt
+                    FROM $this->tableName";
+
+            $params = [];
+            if ($recipeId) {
+                $sql .= " WHERE RecipeID = ?";
+                $params[] = $recipeId;
+            }
+
+            $sql .= " ORDER BY RecipeID ASC";
+
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($params);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             return [];
@@ -303,14 +311,22 @@ class RecipeOutputManager
         }
     }
 
-    public function listOutputs(): array
+    public function listOutputs(?int $recipeId = null): array
     {
         try {
-            $stmt = $this->pdo->query("
-                SELECT OutputID, RecipeID, ArticleID, Quantity, Unit, IsPrimary, CreatedAt, UpdatedAt
-                FROM $this->tableName
-                ORDER BY RecipeID ASC
-            ");
+            $sql = "SELECT OutputID, RecipeID, ArticleID, Quantity, Unit, IsPrimary, CreatedAt, UpdatedAt
+                    FROM $this->tableName";
+
+            $params = [];
+            if ($recipeId) {
+                $sql .= " WHERE RecipeID = ?";
+                $params[] = $recipeId;
+            }
+
+            $sql .= " ORDER BY RecipeID ASC";
+
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($params);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             return [];

@@ -79,7 +79,7 @@ class MachineManager
         }
     }
 
-    public function listMachines(): array
+    public function listMachines(?int $plantId = null, ?int $sectionId = null): array
     {
         try {
             $sql = "SELECT 
@@ -94,9 +94,22 @@ class MachineManager
                     LEFT JOIN section s ON m.SectionID = s.SectionID
                     LEFT JOIN city ci ON p.CityID = ci.CityID
                     LEFT JOIN country co ON ci.CountryID = co.CountryID
-                    ORDER BY m.Name ASC";
+                    WHERE 1=1";
             
-            $stmt = $this->pdo->query($sql);
+            $params = [];
+            if ($plantId) {
+                $sql .= " AND m.PlantID = ?";
+                $params[] = $plantId;
+            }
+            if ($sectionId) {
+                $sql .= " AND m.SectionID = ?";
+                $params[] = $sectionId;
+            }
+
+            $sql .= " ORDER BY m.Name ASC";
+
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($params);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             return [];

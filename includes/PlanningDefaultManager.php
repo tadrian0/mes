@@ -95,20 +95,12 @@ class PlanningDefaultManager
 
     private function insertDefaults(array $missing): void
     {
-        $insertSql = "
-            INSERT INTO {$this->planningTable} (
-                machine_code, machine_name, plan_date,
-                shift1_enabled, shift1_start, shift1_break_start, shift1_break_end, shift1_end,
-                shift2_enabled, shift2_start, shift2_break_start, shift2_break_end, shift2_end,
-                shift3_enabled, shift3_start, shift3_break_start, shift3_break_end, shift3_end
-            ) VALUES (
-                ?, ?, ?, 
-                ?, ?, ?, ?, ?, 
-                ?, ?, ?, ?, ?, 
-                ?, ?, ?, ?, ?
-            )";
+        if (empty($missing)) {
+            return;
+        }
 
-        $stmt = $this->pdo->prepare($insertSql);
+        $allParams = [];
+        $values = [];
 
         foreach ($missing as $item) {
             $machine = $item['machine'];
@@ -123,25 +115,41 @@ class PlanningDefaultManager
                 3 => ['start' => null, 'end' => null, 'bS' => null, 'bE' => null, 'enabled' => 0],
             ];
 
-            $params = [
+            $rowParams = [
                 $machine['machine_code'],
                 $machine['machine_name'],
                 $date,
             ];
 
             foreach ($shifts as $s) {
-                $params[] = $s['enabled'];
-                $params[] = $s['start'];
-                $params[] = $s['bS'];
-                $params[] = $s['bE'];
-                $params[] = $s['end'];
+                $rowParams[] = $s['enabled'];
+                $rowParams[] = $s['start'];
+                $rowParams[] = $s['bS'];
+                $rowParams[] = $s['bE'];
+                $rowParams[] = $s['end'];
             }
 
-            try {
-                $stmt->execute($params);
-            } catch (PDOException $e) {
-                error_log("PlanningDefaultManager insert error (code {$machine['machine_code']} / $date): " . $e->getMessage());
-            }
+            $values[] = "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            $allParams = array_merge($allParams, $rowParams);
+        }
+
+        if (empty($values)) {
+            return;
+        }
+
+        $insertSql = "
+            INSERT INTO {$this->planningTable} (
+                machine_code, machine_name, plan_date,
+                shift1_enabled, shift1_start, shift1_break_start, shift1_break_end, shift1_end,
+                shift2_enabled, shift2_start, shift2_break_start, shift2_break_end, shift2_end,
+                shift3_enabled, shift3_start, shift3_break_start, shift3_break_end, shift3_end
+            ) VALUES " . implode(', ', $values);
+
+        try {
+            $stmt = $this->pdo->prepare($insertSql);
+            $stmt->execute($allParams);
+        } catch (PDOException $e) {
+            error_log("PlanningDefaultManager batch insert error: " . $e->getMessage());
         }
     }
 }

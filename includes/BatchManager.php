@@ -92,6 +92,10 @@ class BatchManager
 
             $sql .= " ORDER BY b.PrintTime DESC";
 
+            if (empty($filterMachine) && empty($filterOperator) && empty($startDate) && empty($endDate) && empty($searchBatch)) {
+                $sql .= " LIMIT 1000";
+            }
+
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute($params);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);

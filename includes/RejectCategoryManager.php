@@ -49,12 +49,13 @@ class RejectCategoryManager
                         s.Name AS SectionName,
                         c.Name AS CityName,
                         co.Name AS CountryName,
-                        (SELECT COUNT(*) FROM reject_reason rr WHERE rr.CategoryID = rc.CategoryID) as ReasonCount
+                        COUNT(rr.ReasonID) as ReasonCount
                     FROM $this->tableName rc
                     LEFT JOIN plant p ON rc.PlantID = p.PlantID
                     LEFT JOIN section s ON rc.SectionID = s.SectionID
                     LEFT JOIN city c ON p.CityID = c.CityID
                     LEFT JOIN country co ON c.CountryID = co.CountryID
+                    LEFT JOIN reject_reason rr ON rc.CategoryID = rr.CategoryID
                     WHERE 1=1";
 
             $params = [];
@@ -67,6 +68,7 @@ class RejectCategoryManager
                 $params[] = $filterSection;
             }
 
+            $sql .= " GROUP BY rc.CategoryID, p.Name, s.Name, c.Name, co.Name";
             $sql .= " ORDER BY rc.CategoryName ASC";
 
             $stmt = $this->pdo->prepare($sql);
@@ -104,8 +106,17 @@ class RejectCategoryManager
                 $insertCat->execute([$sourceCatName, $target['plant_id'], $target['section_id']]);
                 $newCatId = $this->pdo->lastInsertId();
 
-                foreach ($reasons as $reasonName) {
-                    $insertReason->execute([$reasonName, $newCatId]);
+                if (!empty($reasons)) {
+                    $reasonValues = [];
+                    $reasonParams = [];
+                    foreach ($reasons as $reasonName) {
+                        $reasonValues[] = "(?, ?)";
+                        $reasonParams[] = $reasonName;
+                        $reasonParams[] = $newCatId;
+                    }
+                    $sql = "INSERT INTO $this->reasonTable (ReasonName, CategoryID) VALUES " . implode(", ", $reasonValues);
+                    $stmtBatch = $this->pdo->prepare($sql);
+                    $stmtBatch->execute($reasonParams);
                 }
             }
 

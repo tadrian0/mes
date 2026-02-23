@@ -102,15 +102,20 @@ class RejectReasonManager
 
             if (!$sourceData) return false;
 
-            $insert = $this->pdo->prepare("INSERT INTO $this->tableName (ReasonName, CategoryID, PlantID, SectionID) VALUES (?, ?, ?, ?)");
-
+            $values = [];
+            $params = [];
             foreach ($targets as $target) {
-                $insert->execute([
-                    $sourceData['ReasonName'], 
-                    $sourceData['CategoryID'], 
-                    $target['plant_id'], 
-                    $target['section_id']
-                ]);
+                $values[] = "(?, ?, ?, ?)";
+                $params[] = $sourceData['ReasonName'];
+                $params[] = $sourceData['CategoryID'];
+                $params[] = $target['plant_id'];
+                $params[] = $target['section_id'];
+            }
+
+            if (!empty($values)) {
+                $sql = "INSERT INTO $this->tableName (ReasonName, CategoryID, PlantID, SectionID) VALUES " . implode(", ", $values);
+                $stmt = $this->pdo->prepare($sql);
+                $stmt->execute($params);
             }
 
             $this->pdo->commit();

@@ -1,32 +1,32 @@
-<div id="qc" class="footer-section">
-    <h3>Quality</h3>
+<div id="qc" class="footer-section d-flex flex-column h-100">
+    <div class="d-flex justify-content-between align-items-center mb-2 w-100">
+        <h3 class="mb-0">Quality</h3>
+        <div class="d-flex gap-1">
+            <button class="btn btn-danger btn-sm shadow-sm" id="btn-discard" title="Discard / Reject" style="width: 40px; height: 32px;">
+                <i class="fa-solid fa-trash"></i>
+            </button>
+            <button class="btn btn-success btn-sm shadow-sm" id="btn-recovery" title="Recovery / Rework" style="width: 40px; height: 32px;">
+                <i class="fa-solid fa-recycle"></i>
+            </button>
+        </div>
+    </div>
 
-    <div class="qc-recent-list mb-2" style="font-size: 0.8rem; min-height: 60px;">
+    <div class="qc-recent-list flex-grow-1 overflow-auto border rounded bg-white p-1" style="font-size: 0.8rem;">
         <?php if (!empty($data['recentRejects'])): ?>
             <?php foreach ($data['recentRejects'] as $reject): ?>
-                <div class="d-flex justify-content-between border-bottom pb-1 mb-1">
-                    <span class="text-truncate" style="max-width: 70%;" title="<?= htmlspecialchars($reject['CategoryName'] . ' - ' . $reject['ReasonName']) ?>">
+                <div class="d-flex justify-content-between border-bottom pb-1 mb-1 px-1">
+                    <span class="text-truncate" style="max-width: 75%;" title="<?= htmlspecialchars($reject['CategoryName'] . ' - ' . $reject['ReasonName']) ?>">
                         <?= htmlspecialchars($reject['ReasonName']) ?>
                     </span>
                     <span class="fw-bold text-danger">-<?= $reject['Quantity'] ?></span>
                 </div>
             <?php endforeach; ?>
         <?php else: ?>
-            <div class="text-muted text-center pt-2">No recent rejects</div>
+            <div class="text-muted text-center pt-2 fst-italic">No recent rejects</div>
         <?php endif; ?>
-    </div>
-
-    <div class="d-flex gap-2">
-        <button class="btn-qc w-50 btn btn-danger" id="btn-discard" style="height: auto; padding: 10px;">
-            <i class="fa-solid fa-trash"></i> Discard
-        </button>
-        <button class="btn-qc w-50 btn btn-success" id="btn-recovery" style="height: auto; padding: 10px;">
-            <i class="fa-solid fa-recycle"></i> Recovery
-        </button>
     </div>
 </div>
 
-<!-- Discard Modal -->
 <div class="modal fade" id="modal-discard" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content shadow-lg border-0">
@@ -36,7 +36,6 @@
             </div>
             <div class="modal-body p-0">
                 <div class="d-flex" style="height: 450px;">
-                    <!-- Left Side -->
                     <div class="col-4 bg-light border-end p-3 d-flex flex-column">
                         <div class="mb-3">
                             <label class="form-label fw-bold">Quantity</label>
@@ -45,18 +44,15 @@
                         <div class="flex-grow-1 overflow-auto">
                             <label class="form-label fw-bold text-muted small">CATEGORIES</label>
                             <div class="list-group" id="reject-categories">
-                                <!-- Categories injected here -->
                                 <div class="text-center p-3"><i class="fa-solid fa-spinner fa-spin"></i></div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Right Side -->
                     <div class="col-8 p-3 d-flex flex-column">
                         <div class="flex-grow-1 overflow-auto mb-3 border rounded p-2 bg-white" id="reject-reasons-container">
                             <label class="form-label fw-bold text-muted small sticky-top bg-white w-100">REASONS</label>
                             <div class="list-group list-group-flush" id="reject-reasons">
-                                <!-- Reasons injected here -->
                                 <div class="text-center p-3 text-muted">Select a category</div>
                             </div>
                         </div>

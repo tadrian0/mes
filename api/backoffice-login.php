@@ -2,6 +2,7 @@
 require_once '../includes/Config.php';
 require_once '../includes/Database.php';
 require_once '../includes/ApiKeyManager.php';
+require_once '../includes/UserManager.php';
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -32,7 +33,9 @@ try {
     $stmt->execute([$username]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if ($user && $password === $user['OperatorPassword']) {
+    $userManager = new UserManager($pdo);
+
+    if ($user && $userManager->verifyPassword($password, $user['OperatorPassword'], $user['OperatorID'])) {
         $roles = explode(';', $user['OperatorRoles']);
         // Check for admin role (case insensitive or whatever convention is used. login.php checked for 'admin')
         if (in_array('admin', $roles) || in_array('Admin', $roles)) {

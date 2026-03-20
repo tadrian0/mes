@@ -10,6 +10,24 @@ class UserManager
     }
 
     /**
+     * Verify a password against a stored hash or plaintext fallback
+     */
+    public static function verifyPassword(string $inputPassword, string $storedHash): bool
+    {
+        if (password_verify($inputPassword, $storedHash)) {
+            return true;
+        }
+
+        // Fallback for legacy plaintext passwords
+        $info = password_get_info($storedHash);
+        if ($info['algoName'] === 'unknown' && $inputPassword === $storedHash) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Create a new user
      */
     public function createUser(string $username, string $password, string $role): bool
@@ -21,12 +39,14 @@ class UserManager
                 return false; 
             }
 
+            $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+
             $stmt = $this->pdo->prepare("
                 INSERT INTO $this->tableName (OperatorUsername, OperatorPassword, OperatorRoles) 
                 VALUES (?, ?, ?)
             ");
             
-            return $stmt->execute([$username, $password, $role]);
+            return $stmt->execute([$username, $hashedPassword, $role]);
         } catch (PDOException $e) {
             return false;
         }
@@ -39,12 +59,13 @@ class UserManager
     {
         try {
             if ($password) {
+                $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
                 $stmt = $this->pdo->prepare("
                     UPDATE $this->tableName 
                     SET OperatorUsername = ?, OperatorPassword = ?, OperatorRoles = ? 
                     WHERE OperatorID = ?
                 ");
-                return $stmt->execute([$username, $password, $role, $id]);
+                return $stmt->execute([$username, $hashedPassword, $role, $id]);
             } else {
                 // Update without changing password
                 $stmt = $this->pdo->prepare("

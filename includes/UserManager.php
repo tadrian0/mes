@@ -21,12 +21,14 @@ class UserManager
                 return false; 
             }
 
+            $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+
             $stmt = $this->pdo->prepare("
                 INSERT INTO $this->tableName (OperatorUsername, OperatorPassword, OperatorRoles) 
                 VALUES (?, ?, ?)
             ");
             
-            return $stmt->execute([$username, $password, $role]);
+            return $stmt->execute([$username, $hashedPassword, $role]);
         } catch (PDOException $e) {
             return false;
         }
@@ -39,12 +41,13 @@ class UserManager
     {
         try {
             if ($password) {
+                $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
                 $stmt = $this->pdo->prepare("
                     UPDATE $this->tableName 
                     SET OperatorUsername = ?, OperatorPassword = ?, OperatorRoles = ? 
                     WHERE OperatorID = ?
                 ");
-                return $stmt->execute([$username, $password, $role, $id]);
+                return $stmt->execute([$username, $hashedPassword, $role, $id]);
             } else {
                 // Update without changing password
                 $stmt = $this->pdo->prepare("
@@ -138,6 +141,39 @@ class UserManager
         } catch (PDOException $e) {
             return null;
         }
+    }
+
+    /**
+     * Securely verify an input password against the stored password hash
+     * Also falls back to legacy plaintext passwords for backward compatibility
+     */
+    public function verifyPassword(string $inputPassword, string $storedPassword, int $userId = null): bool
+    {
+        $info = password_get_info($storedPassword);
+        if ($info['algoName'] !== 'unknown') {
+            return password_verify($inputPassword, $storedPassword);
+        }
+
+        // Legacy plaintext fallback
+        if ($inputPassword === $storedPassword) {
+            // Automatically re-hash and update the user's password if userId is provided
+            if ($userId !== null) {
+                try {
+                    $hashedPassword = password_hash($inputPassword, PASSWORD_DEFAULT);
+                    $stmt = $this->pdo->prepare("
+                        UPDATE $this->tableName
+                        SET OperatorPassword = ?
+                        WHERE OperatorID = ?
+                    ");
+                    $stmt->execute([$hashedPassword, $userId]);
+                } catch (PDOException $e) {
+                    // Silently fail if re-hash update fails, but still allow login
+                }
+            }
+            return true;
+        }
+
+        return false;
     }
 }
 ?>

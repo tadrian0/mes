@@ -42,7 +42,7 @@ try {
             sendJson(['status' => 'error', 'message' => 'User not found.']);
         }
 
-        if ($user['OperatorPassword'] === $password) {
+        if ($userManager->verifyPassword($password, $user['OperatorPassword'], $user['OperatorID'])) {
             if ($logManager->loginOperator($user['OperatorID'], $machineId)) {
                 sendJson(['status' => 'success']);
             } else {

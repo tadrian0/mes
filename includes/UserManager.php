@@ -10,6 +10,23 @@ class UserManager
     }
 
     /**
+     * Verify a password against a stored hash or fallback to plaintext.
+     * Centralized auth logic.
+     */
+    public function verifyPassword(?string $inputPassword, ?string $storedHash): bool
+    {
+        $inputPassword = (string)$inputPassword;
+        $storedHash = (string)$storedHash;
+
+        $info = password_get_info($storedHash);
+        if ($info['algoName'] === 'unknown') {
+            // Legacy plaintext fallback
+            return $inputPassword === $storedHash;
+        }
+        return password_verify($inputPassword, $storedHash);
+    }
+
+    /**
      * Create a new user
      */
     public function createUser(string $username, string $password, string $role): bool
@@ -26,7 +43,8 @@ class UserManager
                 VALUES (?, ?, ?)
             ");
             
-            return $stmt->execute([$username, $password, $role]);
+            $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+            return $stmt->execute([$username, $hashedPassword, $role]);
         } catch (PDOException $e) {
             return false;
         }
@@ -44,7 +62,8 @@ class UserManager
                     SET OperatorUsername = ?, OperatorPassword = ?, OperatorRoles = ? 
                     WHERE OperatorID = ?
                 ");
-                return $stmt->execute([$username, $password, $role, $id]);
+                $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+                return $stmt->execute([$username, $hashedPassword, $role, $id]);
             } else {
                 // Update without changing password
                 $stmt = $this->pdo->prepare("

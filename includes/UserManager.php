@@ -10,6 +10,26 @@ class UserManager
     }
 
     /**
+     * Securely verifies a password against a stored hash (with legacy plaintext fallback).
+     */
+    public static function verifyPassword(string $inputPassword, string $storedHash): bool
+    {
+        // First try standard password_verify (for bcrypt/argon2 hashes)
+        if (password_verify($inputPassword, $storedHash)) {
+            return true;
+        }
+
+        // Check if the stored hash doesn't look like a standard PHP hash
+        $info = password_get_info($storedHash);
+        if ($info['algoName'] === 'unknown') {
+            // Fallback for legacy plaintext passwords (using hash_equals to mitigate timing attacks)
+            return hash_equals($storedHash, $inputPassword);
+        }
+
+        return false;
+    }
+
+    /**
      * Create a new user
      */
     public function createUser(string $username, string $password, string $role): bool
@@ -21,12 +41,15 @@ class UserManager
                 return false; 
             }
 
+            // Hash the password securely
+            $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+
             $stmt = $this->pdo->prepare("
                 INSERT INTO $this->tableName (OperatorUsername, OperatorPassword, OperatorRoles) 
                 VALUES (?, ?, ?)
             ");
             
-            return $stmt->execute([$username, $password, $role]);
+            return $stmt->execute([$username, $hashedPassword, $role]);
         } catch (PDOException $e) {
             return false;
         }
@@ -39,12 +62,14 @@ class UserManager
     {
         try {
             if ($password) {
+                // Hash the new password securely
+                $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
                 $stmt = $this->pdo->prepare("
                     UPDATE $this->tableName 
                     SET OperatorUsername = ?, OperatorPassword = ?, OperatorRoles = ? 
                     WHERE OperatorID = ?
                 ");
-                return $stmt->execute([$username, $password, $role, $id]);
+                return $stmt->execute([$username, $hashedPassword, $role, $id]);
             } else {
                 // Update without changing password
                 $stmt = $this->pdo->prepare("

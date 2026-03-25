@@ -21,12 +21,14 @@ class UserManager
                 return false; 
             }
 
+            $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+
             $stmt = $this->pdo->prepare("
                 INSERT INTO $this->tableName (OperatorUsername, OperatorPassword, OperatorRoles) 
                 VALUES (?, ?, ?)
             ");
             
-            return $stmt->execute([$username, $password, $role]);
+            return $stmt->execute([$username, $hashedPassword, $role]);
         } catch (PDOException $e) {
             return false;
         }
@@ -39,12 +41,13 @@ class UserManager
     {
         try {
             if ($password) {
+                $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
                 $stmt = $this->pdo->prepare("
                     UPDATE $this->tableName 
                     SET OperatorUsername = ?, OperatorPassword = ?, OperatorRoles = ? 
                     WHERE OperatorID = ?
                 ");
-                return $stmt->execute([$username, $password, $role, $id]);
+                return $stmt->execute([$username, $hashedPassword, $role, $id]);
             } else {
                 // Update without changing password
                 $stmt = $this->pdo->prepare("
@@ -138,6 +141,19 @@ class UserManager
         } catch (PDOException $e) {
             return null;
         }
+    }
+
+    /**
+     * Verify a password against a stored hash (with fallback for legacy plaintext passwords)
+     */
+    public function verifyPassword(string $inputPassword, string $storedHash): bool
+    {
+        if (password_get_info($storedHash)['algoName'] === 'unknown') {
+            // Legacy fallback for plain text passwords
+            return $inputPassword === $storedHash;
+        }
+
+        return password_verify($inputPassword, $storedHash);
     }
 }
 ?>

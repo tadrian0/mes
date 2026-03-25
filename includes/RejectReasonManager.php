@@ -102,15 +102,22 @@ class RejectReasonManager
 
             if (!$sourceData) return false;
 
-            $insert = $this->pdo->prepare("INSERT INTO $this->tableName (ReasonName, CategoryID, PlantID, SectionID) VALUES (?, ?, ?, ?)");
+            $chunks = array_chunk($targets, 500);
 
-            foreach ($targets as $target) {
-                $insert->execute([
-                    $sourceData['ReasonName'], 
-                    $sourceData['CategoryID'], 
-                    $target['plant_id'], 
-                    $target['section_id']
-                ]);
+            foreach ($chunks as $chunk) {
+                $placeholders = [];
+                $params = [];
+                foreach ($chunk as $target) {
+                    $placeholders[] = "(?, ?, ?, ?)";
+                    $params[] = $sourceData['ReasonName'];
+                    $params[] = $sourceData['CategoryID'];
+                    $params[] = $target['plant_id'];
+                    $params[] = $target['section_id'];
+                }
+
+                $sql = "INSERT INTO $this->tableName (ReasonName, CategoryID, PlantID, SectionID) VALUES " . implode(", ", $placeholders);
+                $insert = $this->pdo->prepare($sql);
+                $insert->execute($params);
             }
 
             $this->pdo->commit();

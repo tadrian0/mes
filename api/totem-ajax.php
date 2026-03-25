@@ -16,7 +16,6 @@ function sendJson($data) {
     exit;
 }
 
-$action = $_POST['action'] ?? '';
 $machineId = isset($_POST['machine_id']) ? (int)$_POST['machine_id'] : 0;
 
 $logManager = new OperatorLogsManager($pdo);
@@ -28,7 +27,8 @@ $rejectCatManager = new RejectCategoryManager($pdo);
 $rejectReasonManager = new RejectReasonManager($pdo);
 
 try {
-    if ($action === 'login') {
+    switch ($_POST['action'] ?? '') {
+    case 'login':
         $username = trim($_POST['username'] ?? '');
         $password = trim($_POST['password'] ?? '');
 
@@ -51,23 +51,23 @@ try {
         } else {
             sendJson(['status' => 'error', 'message' => 'Invalid password.']);
         }
-    }
+        break;
 
-    elseif ($action === 'logout') {
+    case 'logout':
         $operatorId = (int)$_POST['operator_id'];
         if ($logManager->logoutOperator($operatorId)) {
             sendJson(['status' => 'success']);
         } else {
             sendJson(['status' => 'error', 'message' => 'Logout failed.']);
         }
-    }
+        break;
 
-    elseif ($action === 'fetch_operators') {
+    case 'fetch_operators':
         $operators = $logManager->getActiveOperators($machineId);
         sendJson(['status' => 'success', 'operators' => $operators]);
-    }
+        break;
 
-    elseif ($action === 'start_production') {
+    case 'start_production':
         $orderId = (int)$_POST['order_id'];
         
         $operators = $logManager->getActiveOperators($machineId);
@@ -85,9 +85,9 @@ try {
         } else {
             sendJson(['status' => 'error', 'message' => 'Failed to update order status.']);
         }
-    }
+        break;
 
-    elseif ($action === 'fetch_reject_data') {
+    case 'fetch_reject_data':
         $categories = $rejectCatManager->listCategories();
         $reasons    = $rejectReasonManager->listReasons();
 
@@ -96,9 +96,9 @@ try {
             'categories' => $categories,
             'reasons' => $reasons
         ]);
-    }
+        break;
 
-    elseif ($action === 'submit_reject') {
+    case 'submit_reject':
         $qty = (int)$_POST['quantity'];
         $reasonId = (int)$_POST['reason_id'];
         $categoryId = (int)$_POST['category_id'];
@@ -134,10 +134,11 @@ try {
         } else {
             sendJson(['status' => 'error', 'message' => 'Failed to save reject record.']);
         }
-    }
+        break;
 
-    else {
+    default:
         sendJson(['status' => 'error', 'message' => 'Invalid action.']);
+        break;
     }
 
 } catch (Exception $e) {

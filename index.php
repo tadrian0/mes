@@ -1,4 +1,9 @@
 <?php
+if (!file_exists(__DIR__ . '/includes/Database.php')) {
+    header('Location: install.php');
+    exit;
+}
+
 session_start();
 
 if (isset($_SESSION['user_id'])) {

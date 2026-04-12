@@ -6,6 +6,7 @@ if (!file_exists(__DIR__ . '/includes/Database.php')) {
 require_once 'includes/Config.php';
 require_once 'includes/Database.php';
 require_once 'includes/ApiKeyManager.php';
+require_once 'includes/UserManager.php';
 
 $userTableName = "user";
 
@@ -28,7 +29,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute([$username]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($user && $password === $user['OperatorPassword']) {
+        $userManager = new UserManager($pdo);
+
+        if ($user && $userManager->verifyPassword($password, $user['OperatorPassword'], $user['OperatorID'])) {
             $roles = explode(';', $user['OperatorRoles']);
             if (in_array('admin', $roles)) {
                 $_SESSION['user_id'] = $user['OperatorID'];
